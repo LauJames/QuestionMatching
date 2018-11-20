@@ -18,12 +18,15 @@ from collections import Counter
 
 
 def contentlen():
-    with open("question", 'r', encoding='utf-8') as f:
+    with open("question.csv", 'r', encoding='utf-8') as f:
         lenList = []
         for line in f:
-            dframe = line.split('\t')
-            content = dframe[1]
-            lenList.append(len(content))
+            dframe = line.strip().split('\t')
+            try:
+                content = dframe[1]
+                lenList.append(len(content))
+            except IndexError as index_error:
+                print('error line: '+ str(line))
         pdstata(lenList)
 
 
@@ -51,3 +54,7 @@ def pdstata(lenList):
         f.write(str(quantileList) + '\r\n')
     finally:
         f.close()
+
+
+if __name__ == '__main__':
+    contentlen()

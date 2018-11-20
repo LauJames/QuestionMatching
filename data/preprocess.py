@@ -48,6 +48,8 @@ def csv2QQpair(path):
     primary_question_dict = {}
     csv_data = pd.read_csv(path, sep='\t', header=None, index_col=0)
     for key, data in csv_data.iterrows():
+        if not (data[1].strip() or data[2].strip()):
+            continue
         if data[2] == 0:
             primary_question_dict[key] = (data[1]).replace('\n', '')  # key: id, value: question
 
@@ -55,6 +57,8 @@ def csv2QQpair(path):
     questions2 = []
     flags = []
     for key, data in csv_data.iterrows():
+        if not (data[1].strip() or data[2].strip()):
+            continue
         if data[2] != 0:
             # True
             questions1.append((data[1]).replace("\n", ""))
