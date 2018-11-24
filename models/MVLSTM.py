@@ -21,8 +21,8 @@ class MVLSTM(object):
     """
     MV-LSTM implemented by tensorflow, using for Question-Question match
     """
-    def __init__(self, sequence_length, num_classes, vocab_size, embedding_dim,
-                 max_length, num_layers, hidden_dim, learning_rate, top_k=100):
+    def __init__(self, sequence_length, num_classes, embedding_dim,
+                 max_length, hidden_dim, learning_rate, top_k=100):
         # Placeholders for input, output and dropout
         self.input_q1 = tf.placeholder(tf.int32, [None, sequence_length], name='input_q1')
         self.input_q2 = tf.placeholder(tf.int32, [None, sequence_length], name='input_q2')

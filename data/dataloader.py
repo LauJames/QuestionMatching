@@ -39,15 +39,20 @@ def get_q2q_label(file_path):
             questions2.append(question2)
 
 
-def batch_iter_per_epoch(q1, q2, labels, batch_size=32):
+def batch_iter_per_epoch(q1, q2, labels, batch_size=32, shuffle=True):
     """为每个epoch随机生成批次数据"""
     data_len = len(q1)
     num_batch = int((data_len-1)/batch_size) + 1
 
-    indices = np.random.permutation(np.arange(data_len))
-    q1_shuffle = q1[indices]
-    q2_shuffle = q2[indices]
-    labels_shuffle = labels[indices]
+    if shuffle:
+        indices = np.random.permutation(np.arange(data_len))
+        q1_shuffle = q1[indices]
+        q2_shuffle = q2[indices]
+        labels_shuffle = labels[indices]
+    else:
+        q1_shuffle = q1
+        q2_shuffle = q2
+        labels_shuffle = labels
 
     for i in range(num_batch):
         start_id = i * batch_size
