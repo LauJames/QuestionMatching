@@ -60,23 +60,23 @@ def batch_iter_per_epoch(q1, q2, labels, batch_size=32, shuffle=True):
         yield q1_shuffle[start_id:end_id], q2_shuffle[start_id:end_id], labels_shuffle[start_id:end_id]
 
 
-def load_data(data_file, dev_sample_percentage, save_vocab_dir, max_length):
+def load_data(data_file, dev_sample_percentage, vocab_path):
     q1, q2, y = get_q2q_label(data_file)
 
     # Build vocabulary
-    vocab_processor = tc.learn.preprocessing.VocabularyPrecessor(max_document_length=max_length)
+    vocab_processor = tc.learn.preprocessing.VocabularyProcessor.restore(vocab_path)
     # padding to max length
     q1_pad = np.array(list(vocab_processor.fit_transform(q1)))
     q2_pad = np.array(list(vocab_processor.fit_transform(q2)))
 
     # Write vocabulary
-    vocab_processor.save(os.path.join(save_vocab_dir, "vocab"))
+    # vocab_processor.save(os.path.join(save_vocab_dir, "vocab"))
 
     # Randomly shuffle data
     np.random.seed(7)
-    shuffle_indices = np.random.permutation(np.array(len(y)))
-    q1_shuffled = q1[shuffle_indices]
-    q2_shuffled = q2[shuffle_indices]
+    shuffle_indices = np.random.permutation(np.arange(len(y)))
+    q1_shuffled = q1_pad[shuffle_indices]
+    q2_shuffled = q2_pad[shuffle_indices]
     y_shuffled = y[shuffle_indices]
 
     # Split train/dev
@@ -85,9 +85,11 @@ def load_data(data_file, dev_sample_percentage, save_vocab_dir, max_length):
     q2_train, q2_dev = q2_shuffled[:dev_sample_indices], q2_shuffled[dev_sample_indices:]
     y_train, y_dev = y_shuffled[:dev_sample_indices], y_shuffled[dev_sample_indices:]
 
-    del q1, q2, y, q1_shuffled, q2_shuffled, y_shuffled
+    del q1, q2, y, q1_pad, q2_pad, q1_shuffled, q2_shuffled, y_shuffled
 
-    print("Vocabulary Size: {:d}".format(len(vocab_processor.vocabulary_)))
+    vocab_size = len(vocab_processor.vocabulary_)
+
+    print("Vocabulary Size: {:d}".format(vocab_size))
     print("Train/Dev split: {:d}/{:d}".format(len(y_train), len(y_dev)))
 
-    return q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev
+    return q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, vocab_size

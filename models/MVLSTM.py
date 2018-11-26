@@ -21,31 +21,36 @@ class MVLSTM(object):
     """
     MV-LSTM implemented by tensorflow, using for Question-Question match
     """
-    def __init__(self, sequence_length, num_classes, embedding_dim,
+    def __init__(self, sequence_length, num_classes, embedding_dim, vocab_size,
                  max_length, hidden_dim, learning_rate, top_k=100):
         # Placeholders for input, output and dropout
         self.input_q1 = tf.placeholder(tf.int32, [None, sequence_length], name='input_q1')
         self.input_q2 = tf.placeholder(tf.int32, [None, sequence_length], name='input_q2')
-        self.input_y = tf.placeholder(tf.float32, [None, num_classes], name='input_y')
+        self.input_y = tf.placeholder(tf.int64, [None], name='input_y')
         self.dropout_keep_prob = tf.placeholder(tf.float32, name='keep_prob')
 
         # Embedding layer
         with tf.device('/cpu:0'), tf.name_scope('word_embedding'):
-            self.word_embeddings = tf.get_variable(
-                shape=(self.vocab.size(), self.vocab.embed_dim),
-                initializer=tf.constant_initializer(self.vocab.embeddings),
-                trainable=True,
-                name='word_embeddings'
-            )
+            # pre-trained word vector
+            # self.word_embeddings = tf.get_variable(
+            #     shape=(self.vocab.size(), embedding_dim),
+            #     initializer=tf.constant_initializer(self.vocab.embeddings),
+            #     trainable=True,
+            #     name='word_embeddings'
+            # )
+
+            # random initially word vector
+            self.word_embeddings = tf.Variable(tf.random_uniform([vocab_size, embedding_dim], -1.0, 1.0),
+                                               name='word_embeddings')
             self.q1_emb = tf.nn.embedding_lookup(self.word_embeddings, self.input_q1)
             self.q2_emb = tf.nn.embedding_lookup(self.word_embeddings, self.input_q2)
 
         # Encoding layer
         # RNN model
         with tf.variable_scope('q1_encoding'):
-            self.sep_q1_encodes, _ = rnn('bi-lstm', self.q1_emb, max_length, hidden_dim)
+            self.sep_q1_encodes, _ = rnn('bi-lstm', self.q1_emb, hidden_dim, dropout_keep_prob=self.dropout_keep_prob)
         with tf.variable_scope('q2_encoding'):
-            self.sep_q2_encodes, _ = rnn('bi-lstm', self.q2_emb, max_length, hidden_dim)
+            self.sep_q2_encodes, _ = rnn('bi-lstm', self.q2_emb, hidden_dim, dropout_keep_prob=self.dropout_keep_prob)
 
         # Match layer
         # dot-match
@@ -54,9 +59,13 @@ class MVLSTM(object):
             self.cross = tf.expand_dims(self.cross, 3)
 
         with tf.name_scope('score'):
-            self.cross_reshape = tf.reshape(self.cross, (-1,), 'reshape')
 
-            self.mm_k = tf.nn.top_k(self.cross_reshape, top_k, sorted=True)[0]
+            # self.cross_reshape = tf.reshape(self.cross, tf.stack([32, -1]), name='reshape')
+            self.cross_reshape = tf.layers.flatten(self.cross)
+
+            self.mm_k = tf.nn.top_k(self.cross_reshape, top_k, sorted=True)[0]  # return [values, indices]
+            # self.mm_k_0 = [tf.cast(temp[0], tf.float32) for temp in self.mm_k]
+            # self.mm_k_0 = tf.slice(self.mm_k, begin=[0, 0], size=[32, 1])
 
             self.pool1_flat_drop = tf.nn.dropout(self.mm_k, self.dropout_keep_prob)
 

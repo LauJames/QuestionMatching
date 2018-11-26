@@ -15,7 +15,7 @@ import tensorflow as tf
 import tensorflow.contrib as tc
 
 
-def rnn(rnn_type, inputs, length, hidden_dim, num_layers=1, dropout_keep_prob=None, concat=True):
+def rnn(rnn_type, inputs, hidden_dim, num_layers=1, dropout_keep_prob=None, concat=True):
     """
     Implements (Bi-)LSTM, (Bi-)GRU and (Bi-)RNN
     :param rnn_type: the type of rnn
@@ -31,7 +31,7 @@ def rnn(rnn_type, inputs, length, hidden_dim, num_layers=1, dropout_keep_prob=No
     """
     if not rnn_type.startswith('bi'):
         cell = get_cell(rnn_type, hidden_dim, num_layers, dropout_keep_prob)
-        outputs, states = tf.nn.dynamic_rnn(cell, inputs, sequence_length=length, dtype=tf.float32)
+        outputs, states = tf.nn.dynamic_rnn(cell, inputs, dtype=tf.float32)
         if rnn_type.endswith('lstm'):
             c = [state.c for state in states]
             h = [state.h for state in states]
@@ -40,12 +40,12 @@ def rnn(rnn_type, inputs, length, hidden_dim, num_layers=1, dropout_keep_prob=No
         cell_fw = get_cell(rnn_type, hidden_dim, num_layers, dropout_keep_prob)
         cell_bw = get_cell(rnn_type, hidden_dim, num_layers, dropout_keep_prob)
         outputs, states = tf.nn.bidirectional_dynamic_rnn(
-            cell_bw, cell_fw, inputs, sequence_length=length, dtype=tf.float32
+            cell_bw, cell_fw, inputs, dtype=tf.float32
         )
         states_fw, states_bw = states
         if rnn_type.endswith('lstm'):
-            c_fw = [states_fw.c for state_fw in states_fw]
-            h_fw = [states_fw.h for state_fw in states_fw]
+            c_fw = [state_fw.c for state_fw in states_fw]
+            h_fw = [state_fw.h for state_fw in states_fw]
             c_bw = [state_bw.c for state_bw in states_bw]
             h_bw = [state_bw.h for state_bw in states_bw]
             states_fw, states_bw = h_fw, h_bw

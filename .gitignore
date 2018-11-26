@@ -5,3 +5,5 @@
 /data/test.xls
 /.idea/
 /data/stats
+/checkpoints/MVLSTM/vocab
+/data/test.txt

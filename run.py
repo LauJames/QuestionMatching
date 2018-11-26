@@ -19,8 +19,10 @@ import datetime
 import argparse
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib as tc
 import csv
 import logging
+import jieba
 from sklearn import metrics
 from models.MVLSTM import MVLSTM
 from data.dataloader import load_data, batch_iter_per_epoch, get_q2q_label
@@ -45,7 +47,7 @@ def parse_args():
     train_settings.add_argument('--learning_rate', type=float, default=0.001, help='optimizer type')
     train_settings.add_argument('--weight_dacay', type=float, default=0, help='weight decay')
     train_settings.add_argument('--dropout_keep_prob', type=float, default=1, help='dropout keep prob')
-    train_settings.add_argument('--batch_size', type=int, default=64, help='train batch size')
+    train_settings.add_argument('--batch_size', type=int, default=32, help='train batch size')
     train_settings.add_argument('--epochs', type=int, default=10, help='train epochs')
     train_settings.add_argument('--evaluate_every', type=int, default=100,
                                 help='evaluate model on dev set after this many training steps')
@@ -67,11 +69,12 @@ def parse_args():
                                 help='num of classes')
 
     path_settings = parser.add_argument_group('path settings')
-    path_settings.add_argument('--train_files', nargs='+',
-                               default=['./data/q2q_pair.txt'],
+    path_settings.add_argument('--train_files',
+                               # default='./data/q2q_pair.txt',
+                               default='./data/test.txt',
                                help='list of files that contain the preprocessed data')
-    path_settings.add_argument('--test_files', nargs='+',
-                               default=['./data/q2q_pair_test.txt'])
+    path_settings.add_argument('--test_files',
+                               default='./data/q2q_pair_test.txt')
     path_settings.add_argument('--tensorboard_dir', default='tensorboard_dir/MVLSTM',
                                help='saving path of tensorboard')
     path_settings.add_argument('--save_dir', default='checkpoints/MVLSTM',
@@ -80,9 +83,9 @@ def parse_args():
                                help='path of the log file. If not set, logs are printed to console')
 
     misc_setting = parser.add_argument_group('misc settings')
-    misc_setting.add_argument('allow_soft_placement', type=bool, default=True,
+    misc_setting.add_argument('--allow_soft_placement', type=bool, default=True,
                               help='allow device soft device placement')
-    misc_setting.add_argument('log_device_placement', type=bool, default=False,
+    misc_setting.add_argument('--log_device_placement', type=bool, default=False,
                               help='log placement of ops on devices')
 
     return parser.parse_args()
@@ -94,7 +97,7 @@ def get_time_dif(start_time):
     return datetime.timedelta(seconds=int(round(time_dif)))
 
 
-def feed_data(q1_batch, q2_batch, y_batch, keep_prob):
+def feed_data(q1_batch, q2_batch, y_batch, keep_prob, model):
     feed_dict = {
         model.input_q1: q1_batch,
         model.input_q2: q2_batch,
@@ -104,7 +107,7 @@ def feed_data(q1_batch, q2_batch, y_batch, keep_prob):
     return feed_dict
 
 
-def evaluate(q1_dev, q2_dev, y_dev, sess):
+def evaluate(q1_dev, q2_dev, y_dev, sess, model):
     """
     Evaluate model on a dev set
     :param q1_dev:
@@ -119,39 +122,81 @@ def evaluate(q1_dev, q2_dev, y_dev, sess):
     total_acc = 0.0
     for q1_batch_eval, q2_batch_eval, y_batch_eval in batch_eval:
         batch_len = len(y_batch_eval)
-        feed_dict = feed_data(q1_batch_eval, q2_batch_eval, y_batch_eval, keep_prob=1.0)
+        feed_dict = feed_data(q1_batch_eval, q2_batch_eval, y_batch_eval, keep_prob=1.0, model=model)
         loss, accuracy = sess.run([model.loss, model.accuracy], feed_dict)
         total_loss += loss * batch_len
         total_acc += accuracy * batch_len
     return total_loss/data_len, total_acc/data_len
 
 
+def chinese_tokenizer(documents):
+    """
+    中文文本转换为词序列
+    :param documents:
+    :return:
+    """
+    for document in documents:
+        yield list(jieba.cut(document))
+
+
+def prepare():
+    if not os.path.exists(args.save_dir):
+        os.makedirs(args.save_dir)
+    print('Vocab processing ...')
+    q1, q2, y = get_q2q_label(args.train_files)
+    start_time = time.time()
+    vocab_processor = tc.learn.preprocessing.VocabularyProcessor(max_document_length=args.max_q_len,
+                                                                 min_frequency=2,
+                                                                 tokenizer_fn=chinese_tokenizer)
+    q1_pad = np.array(list(vocab_processor.transform(q1)))
+    q2_pad = np.array(list(vocab_processor.transform(q2)))
+
+    del q1, q1_pad, q2, q2_pad, y
+
+    print('Vocab size: {}'.format(len(vocab_processor.vocabulary_)))
+    vocab_processor.save(os.path.join(args.save_dir, "vocab"))
+    time_dif = get_time_dif(start_time)
+    print('Vocab processing time usage:', time_dif)
+
+
 def train():
+    # Load data
+    print('Loading data ...')
+    start_time = time.time()
+    q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, vocab_size = load_data(
+        data_file=args.train_files,
+        dev_sample_percentage=args.dev_sample_percentage,
+        vocab_path=os.path.join(args.save_dir, "vocab")
+    )
+    time_dif = get_time_dif(start_time)
+    print('Time usage:', time_dif)
+
     print('Configuring TensorBoard and Saver ...')
     tensorboard_dir = args.tensorboard_dir
     if not os.path.exists(tensorboard_dir):
         os.makedirs(tensorboard_dir)
+
+    # MVLSTM model init
+    model = MVLSTM(
+        sequence_length=args.max_q_len,
+        num_classes=args.num_classes,
+        embedding_dim=args.embedding_dim,
+        vocab_size=vocab_size,
+        max_length=args.max_q_len,
+        hidden_dim=args.hidden_size,
+        learning_rate=args.learning_rate
+    )
 
     tf.summary.scalar('loss', model.loss)
     tf.summary.scalar('accuracy', model.accuracy)
     merged_summary = tf.summary.merge_all()
     writer = tf.summary.FileWriter(tensorboard_dir)
 
-    # Confirguring Saver
+    # Configuring Saver
 
     saver = tf.train.Saver()
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
-
-    # Load data
-    print('Loading data ...')
-    start_time = time.time()
-    q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev = load_data(data_file=args.train_files,
-                                                                   dev_sample_percentage=args.dev_sample_percentage,
-                                                                   save_vocab_dir=args.save_dir,
-                                                                   max_length=args.max_q_len)
-    time_dif = get_time_dif(start_time)
-    print('Time usage:', time_dif)
 
     # Create Session
     session = tf.Session()
@@ -163,14 +208,14 @@ def train():
     total_batch = 0
     best_acc_dev = 0.0
     last_improved = 0
-    require_improvement = 30000  # Eearly stopping
+    require_improvement = 30000  # Early stopping
 
     tag = False
     for epoch in range(args.epochs):
         print('Epoch:', epoch + 1)
         batch_train = batch_iter_per_epoch(q1_train, q2_train, y_train, args.batch_size)
         for q1_batch, q2_batch, y_batch in batch_train:
-            feed_dict = feed_data(q1_train, q2_train, y_batch, args.dropout_keep_prob)
+            feed_dict = feed_data(q1_train, q2_train, y_batch, args.dropout_keep_prob, model=model)
             if total_batch % args.checkpoint_every == 0:
                 # write to tensorboard scalar
                 summary = session.run(merged_summary, feed_dict)
@@ -180,7 +225,7 @@ def train():
                 # print performance on train set and dev set
                 feed_dict[model.dropout_keep_prob] = 1.0
                 loss_train, acc_train = session.run([model.loss, model.accuracy], feed_dict=feed_dict)
-                loss_dev, acc_dev = evaluate(q1_dev, q2_dev, y_dev, session)
+                loss_dev, acc_dev = evaluate(q1_dev, q2_dev, y_dev, session, model=model)
 
                 if acc_dev > best_acc_dev:
                     # save best result
@@ -208,13 +253,24 @@ def train():
             break
 
 
-def test():
+def predict():
     print('Loading test data ...')
     start_time = time.time()
     q1_test, q2_test, y_test = get_q2q_label(args.test_data_files)
 
     vocab_path = os.path.join(args.save_dir, 'vocab')
     vocab_processor = tf.contrib.learn.preprocessing.VocabularyProcessor.restore(vocab_path)
+
+    # MVLSTM model init
+    model = MVLSTM(
+        sequence_length=args.max_q_len,
+        num_classes=args.num_classes,
+        embedding_dim=args.embedding_dim,
+        vocab_size=len(vocab_processor.vocabulary_),
+        max_length=args.max_q_len,
+        hidden_dim=args.hidden_size,
+        learning_rate=args.learning_rate
+    )
 
     q1 = np.array(list(vocab_processor.transform(q1_test)))
     q2 = np.array(list(vocab_processor.transform(q2_test)))
@@ -225,7 +281,7 @@ def test():
     saver.restore(session, save_path=save_path)
 
     print('Testing ...')
-    loss_test, acc_test = evaluate(q1_test, q2_test, y_test, session)
+    loss_test, acc_test = evaluate(q1_test, q2_test, y_test, session, model=model)
     print('Test loss:{0:>6.2}, Test acc:{1:7.2%}'.format(loss_test, acc_test))
 
     test_batches = batch_iter_per_epoch(q1, q2, y_test, shuffle=False)
@@ -289,19 +345,11 @@ if __name__ == '__main__':
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
     os.environ["CUDA_VISIBLE_DEVICES"] = args.gpu
 
-    # MVLSTM model init
-    model = MVLSTM(
-        sequence_length=args.max_q_len,
-        num_classes=args.num_classes,
-        embedding_dim=args.embedding_dim,
-        hidden_dim=args.hidden_size,
-        learning_rate=args.learning_rate
-    )
-
-    if args.prepare:
-        pass
-    if args.train:
-        train()
-    if args.evaluate:
-        test()
+    # if args.prepare:
+    #     prepare()
+    # if args.train:
+    #     train()
+    # if args.evaluate:
+    #     predict()
+    train()
 
