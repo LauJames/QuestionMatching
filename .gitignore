@@ -9,3 +9,6 @@
 /data/test.txt
 /checkpoints/MVLSTM/
 /tensorboard_dir/MVLSTM/
+/data/testset.txt
+/test.log
+/train.log

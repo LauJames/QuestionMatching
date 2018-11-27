@@ -20,6 +20,7 @@ import codecs
 excel_path = './question.xls'
 csv_path = './question.csv'
 qq_path = './q2q_pair.txt'
+test_path = './testset.txt'
 
 
 def excel2csv(path):
@@ -80,5 +81,47 @@ def csv2QQpair(path):
                 qq.write(str(flag) + '\t' + str(q1) + '\t' + str(q2) + '\n')
 
 
+def gen_testset(path):
+    primary_question_dict = {}
+    csv_data = pd.read_csv(path, sep='\t', header=None, index_col=0)
+    for key, data in csv_data.iterrows():
+
+        if not (data[1].strip() or data[2].strip()):
+            continue
+        if data[2] == 0:
+            primary_question_dict[key] = (data[1]).replace('\n', '')  # key: id, value: question
+
+    questions1 = []
+    questions2 = []
+    flags = []
+    count = 0
+    for key, data in csv_data.iterrows():
+        if count > 1000:
+            break
+        if not (data[1].strip() or data[2].strip()):
+            continue
+        if data[2] != 0:
+            # True
+            questions1.append((data[1]).replace("\n", ""))
+            questions2.append(primary_question_dict[data[2]])
+            flags.append(1)
+            temp_dict = primary_question_dict.copy()  # 浅拷贝，避免修改主问题列表
+            # dict.keys() 返回dict_keys类型，其性质类似集合(set)而不是列表(list)，因此不能使用索引获取其元素
+            primary_id_raw = list(temp_dict.keys())
+            primary_id_raw.remove(data[2])  # 先去除该问题主问题id，再随机负采样
+            fake_id = random.choice(primary_id_raw)
+
+            questions1.append((data[1]).replace("\n", ""))
+            questions2.append(primary_question_dict[fake_id])
+            flags.append(0)
+            count += 1
+
+    with codecs.open(test_path, 'w', encoding='utf-8') as qq:
+        for flag, q1, q2 in zip(flags, questions1, questions2):
+            if q1 and q2:
+                qq.write(str(flag) + '\t' + str(q1) + '\t' + str(q2) + '\n')
+
+
 if __name__ == '__main__':
-    csv2QQpair(csv_path)
+    # csv2QQpair(csv_path)
+    gen_testset(csv_path)

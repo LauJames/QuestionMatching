@@ -46,8 +46,8 @@ def parse_args():
     train_settings.add_argument('--optim', default='adam', help='optimizer type')
     train_settings.add_argument('--learning_rate', type=float, default=0.001, help='optimizer type')
     train_settings.add_argument('--weight_dacay', type=float, default=0, help='weight decay')
-    train_settings.add_argument('--dropout_keep_prob', type=float, default=1, help='dropout keep prob')
-    train_settings.add_argument('--batch_size', type=int, default=32, help='train batch size')
+    train_settings.add_argument('--dropout_keep_prob', type=float, default=0.5, help='dropout keep prob')
+    train_settings.add_argument('--batch_size', type=int, default=64, help='train batch size')
     train_settings.add_argument('--epochs', type=int, default=10, help='train epochs')
     train_settings.add_argument('--evaluate_every', type=int, default=100,
                                 help='evaluate model on dev set after this many training steps')
@@ -73,8 +73,8 @@ def parse_args():
                                default='./data/q2q_pair.txt',
                                # default='./data/test.txt',
                                help='list of files that contain the preprocessed data')
-    path_settings.add_argument('--test_files',
-                               default='./data/q2q_pair_test.txt')
+    path_settings.add_argument('--test_data_files',
+                               default='./data/testset.txt')
     path_settings.add_argument('--tensorboard_dir', default='tensorboard_dir/MVLSTM',
                                help='saving path of tensorboard')
     path_settings.add_argument('--save_dir', default='checkpoints/MVLSTM',
@@ -148,8 +148,8 @@ def prepare():
     vocab_processor = tc.learn.preprocessing.VocabularyProcessor(max_document_length=args.max_q_len,
                                                                  min_frequency=5,
                                                                  tokenizer_fn=chinese_tokenizer)
-    q1_pad = np.array(list(vocab_processor.transform(q1)))
-    q2_pad = np.array(list(vocab_processor.transform(q2)))
+    q1_pad = np.array(list(vocab_processor.fit_transform(q1)))
+    q2_pad = np.array(list(vocab_processor.fit_transform(q2)))
 
     del q1, q1_pad, q2, q2_pad, y
 
@@ -259,7 +259,7 @@ def predict():
     q1_test, q2_test, y_test = get_q2q_label(args.test_data_files)
 
     vocab_path = os.path.join(args.save_dir, 'vocab')
-    vocab_processor = tf.contrib.learn.preprocessing.VocabularyProcessor.restore(vocab_path)
+    vocab_processor = tc.learn.preprocessing.VocabularyProcessor.restore(vocab_path)
 
     # MVLSTM model init
     model = MVLSTM(
@@ -272,8 +272,8 @@ def predict():
         learning_rate=args.learning_rate
     )
 
-    q1 = np.array(list(vocab_processor.transform(q1_test)))
-    q2 = np.array(list(vocab_processor.transform(q2_test)))
+    q1_pad = np.array(list(vocab_processor.transform(q1_test)))
+    q2_pad = np.array(list(vocab_processor.transform(q2_test)))
 
     session = tf.Session()
     session.run(tf.global_variables_initializer())
@@ -281,10 +281,10 @@ def predict():
     saver.restore(session, save_path=save_path)
 
     print('Testing ...')
-    loss_test, acc_test = evaluate(q1_test, q2_test, y_test, session, model=model)
+    loss_test, acc_test = evaluate(q1_pad, q2_pad, y_test, session, model=model)
     print('Test loss:{0:>6.2}, Test acc:{1:7.2%}'.format(loss_test, acc_test))
 
-    test_batches = batch_iter_per_epoch(q1, q2, y_test, shuffle=False)
+    test_batches = batch_iter_per_epoch(q1_pad, q2_pad, y_test, shuffle=False)
     all_predictions = []
     all_predict_prob = []
     count = 0  # concatenate第一次不能为空，需要一个判断来赋all_predict_prob
@@ -302,6 +302,7 @@ def predict():
             all_predict_prob = np.concatenate([all_predict_prob, batch_predict_probs])
         count = 1
 
+    y_test = [float(temp) for temp in y_test]
     # Evaluation indices
     print('Precision, Recall, F1-Score ...')
     print(metrics.classification_report(y_test, all_predictions,
@@ -352,5 +353,5 @@ if __name__ == '__main__':
     # if args.evaluate:
     #     predict()
     # prepare()
-    train()
-
+    # train()
+    predict()

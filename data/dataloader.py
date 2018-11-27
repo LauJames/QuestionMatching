@@ -26,7 +26,7 @@ def get_q2q_label(file_path):
     questions1 = []
     questions2 = []
     labels = []
-    with open(file_path, 'r',encoding='utf-8') as fp:
+    with open(file_path, 'r', encoding='utf-8') as fp:
         while True:
             line = fp.readline()
             if not line:
@@ -66,8 +66,8 @@ def load_data(data_file, dev_sample_percentage, vocab_path):
     # Build vocabulary
     vocab_processor = tc.learn.preprocessing.VocabularyProcessor.restore(vocab_path)
     # padding to max length
-    q1_pad = np.array(list(vocab_processor.fit_transform(q1)))
-    q2_pad = np.array(list(vocab_processor.fit_transform(q2)))
+    q1_pad = np.array(list(vocab_processor.transform(q1)))
+    q2_pad = np.array(list(vocab_processor.transform(q2)))
 
     # Write vocabulary
     # vocab_processor.save(os.path.join(save_vocab_dir, "vocab"))
