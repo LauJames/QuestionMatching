@@ -70,8 +70,8 @@ def parse_args():
 
     path_settings = parser.add_argument_group('path settings')
     path_settings.add_argument('--train_files',
-                               # default='./data/q2q_pair.txt',
-                               default='./data/test.txt',
+                               default='./data/q2q_pair.txt',
+                               # default='./data/test.txt',
                                help='list of files that contain the preprocessed data')
     path_settings.add_argument('--test_files',
                                default='./data/q2q_pair_test.txt')
@@ -146,7 +146,7 @@ def prepare():
     q1, q2, y = get_q2q_label(args.train_files)
     start_time = time.time()
     vocab_processor = tc.learn.preprocessing.VocabularyProcessor(max_document_length=args.max_q_len,
-                                                                 min_frequency=2,
+                                                                 min_frequency=5,
                                                                  tokenizer_fn=chinese_tokenizer)
     q1_pad = np.array(list(vocab_processor.transform(q1)))
     q2_pad = np.array(list(vocab_processor.transform(q2)))
@@ -215,7 +215,7 @@ def train():
         print('Epoch:', epoch + 1)
         batch_train = batch_iter_per_epoch(q1_train, q2_train, y_train, args.batch_size)
         for q1_batch, q2_batch, y_batch in batch_train:
-            feed_dict = feed_data(q1_train, q2_train, y_batch, args.dropout_keep_prob, model=model)
+            feed_dict = feed_data(q1_batch, q2_batch, y_batch, args.dropout_keep_prob, model=model)
             if total_batch % args.checkpoint_every == 0:
                 # write to tensorboard scalar
                 summary = session.run(merged_summary, feed_dict)
@@ -351,5 +351,6 @@ if __name__ == '__main__':
     #     train()
     # if args.evaluate:
     #     predict()
+    # prepare()
     train()
 

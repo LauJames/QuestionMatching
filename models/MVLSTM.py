@@ -24,9 +24,10 @@ class MVLSTM(object):
     def __init__(self, sequence_length, num_classes, embedding_dim, vocab_size,
                  max_length, hidden_dim, learning_rate, top_k=100):
         # Placeholders for input, output and dropout
-        self.input_q1 = tf.placeholder(tf.int32, [None, sequence_length], name='input_q1')
-        self.input_q2 = tf.placeholder(tf.int32, [None, sequence_length], name='input_q2')
+        self.input_q1 = tf.placeholder(tf.int64, [None, sequence_length], name='input_q1')
+        self.input_q2 = tf.placeholder(tf.int64, [None, sequence_length], name='input_q2')
         self.input_y = tf.placeholder(tf.int64, [None], name='input_y')
+        # self.input_y_onehot = tf.one_hot(self.input_y, 2, dtype=tf.int64)
         self.dropout_keep_prob = tf.placeholder(tf.float32, name='keep_prob')
 
         # Embedding layer
@@ -76,7 +77,7 @@ class MVLSTM(object):
             self.y_pred = tf.argmax(self.probs, 1)
 
         with tf.name_scope('loss'):
-            cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits, labels=self.input_y)
+            cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.logits + 1e-10, labels=self.input_y)
             self.loss = tf.reduce_mean(cross_entropy)
             # optimizer
             self.optim = tf.train.AdamOptimizer(learning_rate).minimize(self.loss)

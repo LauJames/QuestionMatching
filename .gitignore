@@ -7,3 +7,5 @@
 /data/stats
 /checkpoints/MVLSTM/vocab
 /data/test.txt
+/checkpoints/MVLSTM/
+/tensorboard_dir/MVLSTM/
