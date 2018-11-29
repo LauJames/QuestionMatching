@@ -13,3 +13,5 @@
 /test.log
 /train.log
 /data/paraphrase_chs.txt
+/data/id2label.json
+/data/question_label.txt
