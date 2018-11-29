@@ -17,6 +17,7 @@ import json
 csv_path = './question.csv'
 question_label_path = './question_label.txt'
 id2label_path = './id2label.json'
+primary_question_dict_path = './primary_question_dict.json'
 
 
 def get_label_question(path):
@@ -32,7 +33,9 @@ def get_label_question(path):
             continue
         if data[2] == 0:
             primary_question_dict[key] = (data[1]).replace('\n', '')  # key: id, value: question
-    json.dumps(primary_question_dict)
+    primary_question_dict_json = json.dumps(primary_question_dict, ensure_ascii=False)
+    with open(primary_question_dict_path, 'w', encoding='utf-8') as pqd_f:
+        pqd_f.write(primary_question_dict_json)
 
     # 构建key: id , value: label
     id2label = {}
