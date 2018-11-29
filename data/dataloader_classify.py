@@ -17,6 +17,9 @@ import tensorflow.contrib as tc
 import pickle as pkl
 
 
+divided_set = './question_classification.pkl'
+
+
 def get_question_label(file_path):
     """
     data loader for question classification task
@@ -89,9 +92,31 @@ def split_data(data_file, vocab_path, dev_sample_percentage=0.1, test_sample_per
     print("Vocabulary Size: {:d}".format(vocab_size))
     print("Train/Dev/test split: {:d}/{:d}/{:d}".format(len(labels_train), len(labels_dev), len(labels_test)))
 
-    # with open() as f:
-    
+    with open(divided_set, 'wb') as pkl_file:
+        try:
+            pkl.dump(questions_train, pkl_file)
+            pkl.dump(questions_dev, pkl_file)
+            pkl.dump(questions_test, pkl_file)
+            pkl.dump(labels_train, pkl_file)
+            pkl.dump(labels_dev, pkl_file)
+            pkl.dump(labels_test, pkl_file)
+            pkl.dump(vocab_size, pkl_file)
+        except Exception as e:
+            print(e)
+
+
+def load_pkl_set(pkl_path):
+    with open(pkl_path, 'rb') as pkl_file:
+        question_train = pkl.load(pkl_file)
+        question_dev = pkl.load(pkl_file)
+        question_test = pkl.load(pkl_file)
+        labels_train = pkl.load(pkl_file)
+        labels_dev = pkl.load(pkl_file)
+        labels_test = pkl.load(pkl_file)
+        vocab_size = pkl.load(pkl_file)
+
+    return question_train, question_dev, question_test, labels_train, labels_dev, labels_test, vocab_size
+
 
 if __name__ == '__main__':
-    test = [1, 2, 3, 4, 5, 6, 7]
-    print(test[:-2])
+    pass
