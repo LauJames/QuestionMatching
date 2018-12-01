@@ -25,7 +25,7 @@ import logging
 import jieba
 from sklearn import metrics
 from models.MVLSTM import MVLSTM
-from data.dataloader import load_data, batch_iter_per_epoch, get_q2q_label
+from data.dataloader import split_data, batch_iter_per_epoch, get_q2q_label, load_pkl_set
 
 
 def parse_args():
@@ -69,12 +69,16 @@ def parse_args():
                                 help='num of classes')
 
     path_settings = parser.add_argument_group('path settings')
-    path_settings.add_argument('--train_files',
+    path_settings.add_argument('--merged_files',
                                default='./data/q2q_pair_merged.txt',
                                # default='./data/test.txt',
                                help='list of files that contain the preprocessed data')
-    path_settings.add_argument('--test_data_files',
-                               default='./data/testset.txt')
+    path_settings.add_argument('--pkl_files',
+                               default='./data/split_data.pkl',
+                               # default='./data/test.txt',
+                               help='list of files that contain the preprocessed data')
+    # path_settings.add_argument('--test_data_files',
+    #                            default='./data/testset.txt')
     path_settings.add_argument('--tensorboard_dir', default='tensorboard_dir/MVLSTM',
                                help='saving path of tensorboard')
     path_settings.add_argument('--save_dir', default='checkpoints/MVLSTM',
@@ -143,7 +147,7 @@ def prepare():
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     print('Vocab processing ...')
-    q1, q2, y = get_q2q_label(args.train_files)
+    q1, q2, y = get_q2q_label(args.merged_files)
     start_time = time.time()
     vocab_processor = tc.learn.preprocessing.VocabularyProcessor(max_document_length=args.max_q_len,
                                                                  min_frequency=5,
@@ -155,6 +159,10 @@ def prepare():
 
     print('Vocab size: {}'.format(len(vocab_processor.vocabulary_)))
     vocab_processor.save(os.path.join(args.save_dir, "vocab"))
+
+    # split
+    split_data(args.merged_files, os.path.join(args.save_dir, "vocab"), args.pkl_files)
+
     time_dif = get_time_dif(start_time)
     print('Vocab processing time usage:', time_dif)
 
@@ -163,11 +171,10 @@ def train():
     # Load data
     print('Loading data ...')
     start_time = time.time()
-    q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, vocab_size = load_data(
-        data_file=args.train_files,
-        dev_sample_percentage=args.dev_sample_percentage,
-        vocab_path=os.path.join(args.save_dir, "vocab")
-    )
+    q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size = load_pkl_set(args.pkl_files)
+
+    del q1_test, q2_test, y_test
+
     time_dif = get_time_dif(start_time)
     print('Time usage:', time_dif)
 
@@ -256,24 +263,24 @@ def train():
 def predict():
     print('Loading test data ...')
     start_time = time.time()
-    q1_test, q2_test, y_test = get_q2q_label(args.test_data_files)
+    q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size = load_pkl_set(
+        args.pkl_files)
 
-    vocab_path = os.path.join(args.save_dir, 'vocab')
-    vocab_processor = tc.learn.preprocessing.VocabularyProcessor.restore(vocab_path)
+    del q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev
 
     # MVLSTM model init
     model = MVLSTM(
         sequence_length=args.max_q_len,
         num_classes=args.num_classes,
         embedding_dim=args.embedding_dim,
-        vocab_size=len(vocab_processor.vocabulary_),
+        vocab_size=vocab_size,
         max_length=args.max_q_len,
         hidden_dim=args.hidden_size,
         learning_rate=args.learning_rate
     )
 
-    q1_pad = np.array(list(vocab_processor.transform(q1_test)))
-    q2_pad = np.array(list(vocab_processor.transform(q2_test)))
+    # q1_pad = np.array(list(vocab_processor.transform(q1_test)))
+    # q2_pad = np.array(list(vocab_processor.transform(q2_test)))
 
     session = tf.Session()
     session.run(tf.global_variables_initializer())
@@ -281,10 +288,10 @@ def predict():
     saver.restore(session, save_path=save_path)
 
     print('Testing ...')
-    loss_test, acc_test = evaluate(q1_pad, q2_pad, y_test, session, model=model)
+    loss_test, acc_test = evaluate(q1_test, q2_test, y_test, session, model=model)
     print('Test loss:{0:>6.2}, Test acc:{1:7.2%}'.format(loss_test, acc_test))
 
-    test_batches = batch_iter_per_epoch(q1_pad, q2_pad, y_test, shuffle=False)
+    test_batches = batch_iter_per_epoch(q1_test, q2_test, y_test, shuffle=False)
     all_predictions = []
     all_predict_prob = []
     count = 0  # concatenate第一次不能为空，需要一个判断来赋all_predict_prob
@@ -352,6 +359,6 @@ if __name__ == '__main__':
     #     train()
     # if args.evaluate:
     #     predict()
-    # prepare()
+    prepare()
     # train()
-    predict()
+    # predict()

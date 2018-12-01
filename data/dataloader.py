@@ -16,10 +16,12 @@ import codecs
 import tensorflow as tf
 import tensorflow.contrib as tc
 import os
+import pickle as pkl
 from sklearn.model_selection import train_test_split
 
 
 q2q_file = 'q2q_pair_merged.txt'
+q2q_divided = 'q2q_match.pkl'
 
 
 def get_q2q_label(file_path):
@@ -39,7 +41,7 @@ def get_q2q_label(file_path):
             questions2.append(question2)
 
 
-def batch_iter_per_epoch(q1, q2, labels, batch_size=32, shuffle=True):
+def batch_iter_per_epoch(q1, q2, labels, batch_size=64, shuffle=True):
     """为每个epoch随机生成批次数据"""
     data_len = len(q1)
     num_batch = int((data_len-1)/batch_size) + 1
@@ -60,7 +62,7 @@ def batch_iter_per_epoch(q1, q2, labels, batch_size=32, shuffle=True):
         yield q1_shuffle[start_id:end_id], q2_shuffle[start_id:end_id], labels_shuffle[start_id:end_id]
 
 
-def load_data(data_file, dev_sample_percentage, vocab_path):
+def split_data(data_file, vocab_path, pkl_path, dev_sample_percentage=0.1, test_sample_percentage=0.1):
     q1, q2, y = get_q2q_label(data_file)
 
     # Build vocabulary
@@ -81,15 +83,58 @@ def load_data(data_file, dev_sample_percentage, vocab_path):
 
     # Split train/dev
     dev_sample_indices = -1 * int(dev_sample_percentage * float(len(y)))
-    q1_train, q1_dev = q1_shuffled[:dev_sample_indices], q1_shuffled[dev_sample_indices:]
-    q2_train, q2_dev = q2_shuffled[:dev_sample_indices], q2_shuffled[dev_sample_indices:]
-    y_train, y_dev = y_shuffled[:dev_sample_indices], y_shuffled[dev_sample_indices:]
+    test_sample_indices = -1 * int(test_sample_percentage * float(len(y)))
+
+    q1_train = q1_shuffled[: dev_sample_indices + test_sample_indices]
+    q1_dev = q1_shuffled[dev_sample_indices + test_sample_indices: test_sample_indices]
+    q1_test = q1_shuffled[test_sample_indices:]
+
+    q2_train = q2_shuffled[: dev_sample_indices + test_sample_indices]
+    q2_dev = q2_shuffled[dev_sample_indices + test_sample_indices: test_sample_indices]
+    q2_test = q2_shuffled[test_sample_indices:]
+
+    y_train = y_shuffled[: dev_sample_indices + test_sample_indices]
+    y_dev = y_shuffled[dev_sample_indices + test_sample_indices: test_sample_indices]
+    y_test = y_shuffled[test_sample_indices:]
 
     del q1, q2, y, q1_pad, q2_pad, q1_shuffled, q2_shuffled, y_shuffled
 
     vocab_size = len(vocab_processor.vocabulary_)
 
     print("Vocabulary Size: {:d}".format(vocab_size))
-    print("Train/Dev split: {:d}/{:d}".format(len(y_train), len(y_dev)))
+    print("Train/Dev split: {:d}/{:d}/{:d}".format(len(y_train), len(y_dev), len(y_test)))
 
-    return q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, vocab_size
+    with open(pkl_path, 'wb') as pkl_file:
+        try:
+            pkl.dump(q1_train, pkl_file)
+            pkl.dump(q2_train, pkl_file)
+            pkl.dump(y_train, pkl_file)
+            pkl.dump(q1_dev, pkl_file)
+            pkl.dump(q2_dev, pkl_file)
+            pkl.dump(y_dev, pkl_file)
+            pkl.dump(q1_test, pkl_file)
+            pkl.dump(q2_test, pkl_file)
+            pkl.dump(y_test, pkl_file)
+            pkl.dump(vocab_size, pkl_file)
+        except Exception as e:
+            print(e)
+
+
+def load_pkl_set(pkl_path):
+    with open(pkl_path, 'rb') as pkl_file:
+        q1_train = pkl.load(pkl_file)
+        q2_train = pkl.load(pkl_file)
+        y_train = pkl.load(pkl_file)
+        q1_dev = pkl.load(pkl_file)
+        q2_dev = pkl.load(pkl_file)
+        y_dev = pkl.load(pkl_file)
+        q1_test = pkl.load(pkl_file)
+        q2_test = pkl.load(pkl_file)
+        y_test = pkl.load(pkl_file)
+        vocab_size = pkl.load(pkl_file)
+
+    return q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size
+
+
+if __name__ == '__main__':
+    pass
