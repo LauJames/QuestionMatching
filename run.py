@@ -70,7 +70,7 @@ def parse_args():
 
     path_settings = parser.add_argument_group('path settings')
     path_settings.add_argument('--train_files',
-                               default='./data/q2q_pair.txt',
+                               default='./data/q2q_pair_merged.txt',
                                # default='./data/test.txt',
                                help='list of files that contain the preprocessed data')
     path_settings.add_argument('--test_data_files',

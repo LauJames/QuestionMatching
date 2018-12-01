@@ -19,7 +19,7 @@ import os
 from sklearn.model_selection import train_test_split
 
 
-q2q_file = 'q2q_pair.txt'
+q2q_file = 'q2q_pair_merged.txt'
 
 
 def get_q2q_label(file_path):
