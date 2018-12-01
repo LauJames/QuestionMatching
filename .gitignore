@@ -16,3 +16,5 @@
 /data/id2label.json
 /data/question_label.txt
 /data/primary_question_dict.json
+/data/paragraph_column.csv
+/data/question_merged.csv
