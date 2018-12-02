@@ -24,3 +24,5 @@
 /data/q2q_pair_bd.txt
 /data/q2q_pair_merged.txt
 /data/split_data.pkl
+/train_aug.log
+/data/primary_question_dict_class.json
