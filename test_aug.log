@@ -1,0 +1,30 @@
+/usr/bin/python3.5 /home/ljw/PycharmProjects/MVLSTM/run.py
+/home/ljw/.local/lib/python3.5/site-packages/h5py/__init__.py:36: FutureWarning: Conversion of the second argument of issubdtype from `float` to `np.floating` is deprecated. In future, it will be treated as `np.float64 == np.dtype(float).type`.
+  from ._conv import register_converters as _register_converters
+WARNING:tensorflow:From /usr/local/lib/python3.5/dist-packages/tensorflow/contrib/learn/python/learn/datasets/base.py:198: retry (from tensorflow.contrib.learn.python.learn.datasets.base) is deprecated and will be removed in a future version.
+Instructions for updating:
+Use the retry module or similar alternatives.
+Loading test data ...
+2018-12-02 14:40:10,036 - q2q_matching - INFO - Runing with args: Namespace(algo='MVLSTM', allow_soft_placement=True, batch_size=64, checkpoint_every=500, dev_sample_percentage=0.1, dropout_keep_prob=0.5, embedding_dim=300, epochs=10, evaluate=False, evaluate_every=100, gpu='0', hidden_size=128, learning_rate=0.001, log_device_placement=False, log_path=None, max_q_len=18, merged_files='./data/q2q_pair_merged.txt', num_checkpoints=5, num_classes=2, optim='adam', pkl_files='./data/split_data.pkl', predict=False, prepare=False, save_dir='checkpoints/MVLSTM', tensorboard_dir='tensorboard_dir/MVLSTM', train=False, weight_dacay=0)
+2018-12-02 14:40:11.175222: I tensorflow/core/platform/cpu_feature_guard.cc:140] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2018-12-02 14:40:11.175916: E tensorflow/stream_executor/cuda/cuda_driver.cc:406] failed call to cuInit: CUDA_ERROR_UNKNOWN
+2018-12-02 14:40:11.175937: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:158] retrieving CUDA diagnostic information for host: irlabljw
+2018-12-02 14:40:11.175941: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:165] hostname: irlabljw
+2018-12-02 14:40:11.175959: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:189] libcuda reported version is: 384.130.0
+2018-12-02 14:40:11.175982: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:193] kernel reported version is: 384.130.0
+2018-12-02 14:40:11.175987: I tensorflow/stream_executor/cuda/cuda_diagnostics.cc:300] kernel version seems to match DSO: 384.130.0
+Testing ...
+Test loss:  0.12, Test acc: 95.72%
+Precision, Recall, F1-Score ...
+             precision    recall  f1-score   support
+
+  not match       0.94      0.97      0.96     23280
+      match       0.97      0.94      0.96     23586
+
+avg / total       0.96      0.96      0.96     46866
+
+Confusion Matrix ...
+[[22654   626]
+ [ 1378 22208]]
+Saving evaluation to checkpoints/MVLSTM/predict_prob_csv
+Time usage: 0:00:36

@@ -359,6 +359,6 @@ if __name__ == '__main__':
     #     train()
     # if args.evaluate:
     #     predict()
-    prepare()
+    # prepare()
     # train()
-    # predict()
+    predict()
