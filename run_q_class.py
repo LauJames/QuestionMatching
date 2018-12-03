@@ -62,9 +62,9 @@ def parse_args():
                                 help='choose the algorithm to use')
     model_settings.add_argument('--embedding_dim', type=int, default=300,
                                 help='size of the embeddings')
-    model_settings.add_argument('--fiter_sizes', type=str, default='3,4,5',
+    model_settings.add_argument('--filter_sizes', type=str, default='3,4,5',
                                 help='Comma-separated filter sizes (default: "3,4,5")')
-    model_settings.add_argument('num_filters', type=int, default=128,
+    model_settings.add_argument('--num_filters', type=int, default=128,
                                 help='Number of filters per filter size (default: 128)')
     model_settings.add_argument('--max_q_len', type=int, default=18,
                                 help='max length of question')
@@ -151,7 +151,7 @@ def prepare():
     if not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     print('Vocab processing ...')
-    questions, labels = get_question_label(args.merged_files)
+    questions, labels = get_question_label(args.train_files)
     start_time = time.time()
     vocab_processor = tc.learn.preprocessing.VocabularyProcessor(max_document_length=args.max_q_len,
                                                                  min_frequency=5,
@@ -164,7 +164,7 @@ def prepare():
     vocab_processor.save(os.path.join(args.save_dir, "vocab"))
 
     # split
-    split_data(args.merged_files, os.path.join(args.save_dir, "vocab"), args.pkl_files)
+    split_data(args.train_files, os.path.join(args.save_dir, "vocab"), args.pkl_files)
 
     time_dif = get_time_dif(start_time)
     print('Vocab processing time usage:', time_dif)
@@ -301,7 +301,7 @@ def predict():
     all_predict_prob = []
     count = 0  # concatenate第一次不能为空，需要一个判断来赋all_predict_prob
     for question_batch, labels_batch in test_batches:
-        batch_predictions, batch_predict_probs = session.run([model.y_pred, model.probs],
+        batch_predictions, batch_predict_probs = session.run([model.y_pred, model.prob],
                                                              feed_dict={
                                                                  model.input_x: question_batch,
                                                                  model.dropout_keep_prob: 1.0
@@ -363,6 +363,6 @@ if __name__ == '__main__':
     #     train()
     # if args.evaluate:
     #     predict()
-    prepare()
+    # prepare()
     # train()
-    # predict()
+    predict()

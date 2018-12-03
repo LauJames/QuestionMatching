@@ -26,3 +26,7 @@
 /data/split_data.pkl
 /train_aug.log
 /data/primary_question_dict_class.json
+/checkpoints/CNN_Classification/
+/CNN_classification_train.log
+/tensorboard_dir/CNN_Classification/
+/data/question_classification.pkl

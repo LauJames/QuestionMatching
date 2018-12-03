@@ -58,7 +58,7 @@ def batch_iter_per_ep4classify(questions, labels, batch_size=64, shuffle=True):
         yield questions_shuffled[start_id: end_id], labels_shuffled[start_id: end_id]
 
 
-def split_data(data_file, out_path, vocab_path, dev_sample_percentage=0.1, test_sample_percentage=0.1):
+def split_data(data_file, vocab_path, out_path, dev_sample_percentage=0.1, test_sample_percentage=0.1):
     questions, labels = get_question_label(data_file)
 
     # Build vocabulary
