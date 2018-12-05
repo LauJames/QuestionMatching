@@ -58,8 +58,9 @@ def main():
     search = Search()
     query = "保险怎么买？"
     result = search.search_by_question(query, 3, config)
-    for data in result:
-        print(data[0], data[1], data[2])
+    # for data in result:
+    #     print(data[0], data[1], data[2])
+    print(result)
 
 
 if __name__ == '__main__':

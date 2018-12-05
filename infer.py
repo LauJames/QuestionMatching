@@ -12,7 +12,6 @@
 @Copyright: "Copyright (c) 2018 Lau James. All Rights Reserved"
 """
 
-
 import os
 import sys
 import time
@@ -113,6 +112,10 @@ def prepare():
 
 
 def inference(q1, q2, vocab_processor, model, session):
+    # args = parse_args()
+    # vocab_path = os.path.join(curdir, os.path.join(args.save_dir, 'vocab'))
+    # vocab_processor = tc.learn.preprocessing.VocabularyProcessor.restore(vocab_path)
+
     q1_pad = np.array(list(vocab_processor.transform(q1)))
     q2_pad = np.array(list(vocab_processor.transform(q2)))
 
@@ -125,11 +128,28 @@ def inference(q1, q2, vocab_processor, model, session):
     return prediction
 
 
+def infer_prob(q1, q2, vocab_processor, model, session):
+    q1_pad = np.array(list(vocab_processor.transform(q1)))
+    q2_pad = np.array(list(vocab_processor.transform(q2)))
+
+    predict_prob, prediction = session.run([model.probs, model.y_pred],
+                                           feed_dict={
+                                               model.input_q1: q1_pad,
+                                               model.input_q2: q2_pad,
+                                               model.dropout_keep_prob: 1.0
+                                           })
+    return predict_prob, prediction
+
+
 if __name__ == '__main__':
-    q1 = ['大小病都能报销吗']
-    q2 = ['大小病都可以保的']
+    q1 = ['如何买保险', '如何买保险', '如何买保险']
+    q2 = ['保险怎么买', '怎么买保险', '糖尿病能不能保']
     vocab_processor, model, session = prepare()
-    tag = inference(q1, q2, vocab_processor, model, session)
-    print(q1)
-    print(q2)
-    print(tag)
+    probs, predict = infer_prob(q1, q2, vocab_processor, model, session)
+    print(probs)
+    print(predict)
+    # q1 = ['如何买保险']
+    # q2 = ['保险怎么买']
+    # vocab_process, model, session = prepare()
+    # prediction = inference(q1, q2, vocab_process, model, session)
+    # print(prediction)
