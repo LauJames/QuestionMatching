@@ -11,7 +11,7 @@
 @Software : PyCharm
 @Copyright: "Copyright (c) 2018 Lau James. All Rights Reserved"
 """
-
+from typing import List, Any, Union
 
 import tornado.ioloop
 import tornado.web
@@ -39,7 +39,11 @@ def chinese_tokenizer(documents):
         yield list(jieba.cut(document))
 
 
+config = Config()
+search = Search()
 vocab_processor, model, session = prepare()
+with open('../data/primary_question_dict.json') as primary_dict_f:
+    primary_question_dict = json.loads(primary_dict_f.readline())
 
 
 class MatchHandler(tornado.web.RequestHandler):
@@ -72,12 +76,6 @@ class MatchHandler(tornado.web.RequestHandler):
 
 
 class PrimaryQuestionFindHandler(tornado.web.RequestHandler):
-    def __init__(self):
-        self.config = Config()
-        self.search = Search()
-        with open('../../data/primary_question_dict.json') as primary_dict_f:
-            self.primary_question_dict = json.loads(primary_dict_f.readlines())
-
     def data_received(self, chunk):
         pass
 
@@ -88,22 +86,33 @@ class PrimaryQuestionFindHandler(tornado.web.RequestHandler):
         self.use_write()
 
     def use_write(self):
-        question = [self.get_argument('question')]
+        question = self.get_argument('question')
         try:
-            results = self.search.search_by_question(question, top_n=5, config=self.config)
+            results = search.search_by_question(question, top_n=3, config=config)
             question_list = [question for _ in range(len(results))]
             retrievaled_question = [temp[1] for temp in results]
             probs, _ = infer_prob(question_list, retrievaled_question, vocab_processor, model, session)
             positive_probs = probs[:, 1]
             max_probs_index = np.argmax(positive_probs)
-            primary_question_id = results[max_probs_index, 2]
+            primary_question_id = results[max_probs_index][2]  # type: Union[List[Any], Any]
             if int(primary_question_id) == 0:
-                return results[max_probs_index, 1]
+                json_data = {'primary_question': str(results[max_probs_index][1]),
+                             'match_score': str(positive_probs[max_probs_index]),
+                             'user_query': str(question)}
+                self.write(json.dumps(json_data, ensure_ascii=False))
+                 
             else:
-                return self.primary_question_dict[results[max_probs_index, 0]]
+                json_data = {'primary_question': str(primary_question_dict[str(primary_question_id)]),
+                             'match_score': str(positive_probs[max_probs_index]),
+                             'user_query': str(question)}
+                self.write(json.dumps(json_data, ensure_ascii=False))
 
         except Exception as e:
             print(e)
+            json_data = {'primary_question': 'Unknown',
+                         'match_score': '0',
+                         'user_query': str(question)}
+            self.write(json.dumps(json_data, ensure_ascii=False))
 
 
 def make_app():
@@ -111,7 +120,8 @@ def make_app():
         template_path=os.path.join(os.path.dirname(__file__), 'templates'),
         static_path=os.path.join(os.path.dirname(__file__), 'static')
     )
-    return tornado.web.Application([(r'/Match', MatchHandler)],
+    return tornado.web.Application([(r'/Match', MatchHandler),
+                                    (r'/FindPrimary', PrimaryQuestionFindHandler)],
                                    **setting)
 
 

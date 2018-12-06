@@ -32,7 +32,7 @@ class Search(object):
         }
 
         count = 0
-        while count < 5:
+        while count < top_n:
             try:
                 res = config.es.search(index=config.index_name, doc_type=config.doc_type, body=q, request_timeout=30)
                 topn = res['hits']['hits']
@@ -57,7 +57,7 @@ def main():
     config = Config()
     search = Search()
     query = "保险怎么买？"
-    result = search.search_by_question(query, 3, config)
+    result = search.search_by_question(query, 5, config)
     # for data in result:
     #     print(data[0], data[1], data[2])
     print(result)
