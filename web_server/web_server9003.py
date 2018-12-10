@@ -87,29 +87,38 @@ class PrimaryQuestionFindHandler(tornado.web.RequestHandler):
 
     def use_write(self):
         question = self.get_argument('question')
+        topn = int(self.get_argument('top_n'))
         try:
-            results = search.search_by_question(question, top_n=3, config=config)
+            results = search.search_by_question(question, top_n=topn, config=config)
             question_list = [question for _ in range(len(results))]
-            retrievaled_question = [temp[1] for temp in results]
-            probs, _ = infer_prob(question_list, retrievaled_question, vocab_processor, model, session)
+            retrievaled_questions = [temp[1] for temp in results]
+            probs, _ = infer_prob(question_list, retrievaled_questions, vocab_processor, model, session)
             positive_probs = probs[:, 1]
-            max_probs_index = np.argmax(positive_probs)
-            primary_question_id = results[max_probs_index][2]  # type: Union[List[Any], Any]
-            if int(primary_question_id) == 0:
-                json_data = {'primary_question': str(results[max_probs_index][1]),
-                             'match_score': str(positive_probs[max_probs_index]),
+            primary_question_ids = [temp[2] for temp in results]
+            # positive_probs = probs[:, 1]
+            # max_probs_index = np.argmax(positive_probs)
+            # primary_question_id = results[max_probs_index][2]  # type: Union[List[Any], Any]
+            alternative_primary_questions = []
+            for primary_question_id, result in zip(primary_question_ids, results):
+                if int(primary_question_id) == 0:
+                    # json_data = {'primary_question': str(results[max_probs_index][1]),
+                    #              'match_score': str(positive_probs[max_probs_index]),
+                    #              'user_query': str(question)}
+                    alternative_primary_questions.append(result[1])
+                else:
+                    alternative_primary_questions.append(primary_question_dict[str(result[2])])
+                # json_data = {'primary_question': str(primary_question_dict[str(primary_question_id)]),
+                #              'match_score': str(positive_probs[max_probs_index]),
+                #              'user_query': str(question)}
+                json_data = {'alternative': '|||'.join(alternative_primary_questions),
+                             'sub_question': '|||'.join(retrievaled_questions),
+                             'match_score': '|||'.join([str(prob) for prob in positive_probs]),
                              'user_query': str(question)}
-                self.write(json.dumps(json_data, ensure_ascii=False))
-                 
-            else:
-                json_data = {'primary_question': str(primary_question_dict[str(primary_question_id)]),
-                             'match_score': str(positive_probs[max_probs_index]),
-                             'user_query': str(question)}
-                self.write(json.dumps(json_data, ensure_ascii=False))
+            self.write(json.dumps(json_data, ensure_ascii=False))
 
         except Exception as e:
             print(e)
-            json_data = {'primary_question': 'Unknown',
+            json_data = {'alternative': 'Unknown',
                          'match_score': '0',
                          'user_query': str(question)}
             self.write(json.dumps(json_data, ensure_ascii=False))
