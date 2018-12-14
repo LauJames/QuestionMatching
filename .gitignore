@@ -30,3 +30,11 @@
 /CNN_classification_train.log
 /tensorboard_dir/CNN_Classification/
 /data/question_classification.pkl
+/data/omit.txt
+/data/front_noise.txt
+/data/end_noise.txt
+/data/primary_question_dict_tk.json
+/checkpoints/MVLSTM_tune/
+/data/split_data_aug.pkl
+/接口说明.docx
+/tensorboard_dir/MVLSTM_tune/
