@@ -102,7 +102,7 @@ def split_data(data_file, vocab_path, pkl_path, dev_sample_percentage=0.1, test_
     vocab_size = len(vocab_processor.vocabulary_)
 
     print("Vocabulary Size: {:d}".format(vocab_size))
-    print("Train/Dev split: {:d}/{:d}/{:d}".format(len(y_train), len(y_dev), len(y_test)))
+    print("Train/Dev/test split: {:d}/{:d}/{:d}".format(len(y_train), len(y_dev), len(y_test)))
 
     with open(pkl_path, 'wb') as pkl_file:
         try:

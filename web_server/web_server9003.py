@@ -26,7 +26,8 @@ from ir.config import Config
 curdir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(curdir))
 
-from infer import prepare, inference, infer_prob
+# from infer import prepare, inference, infer_prob
+from infer_tune import prepare, inference, infer_prob
 
 
 def chinese_tokenizer(documents):

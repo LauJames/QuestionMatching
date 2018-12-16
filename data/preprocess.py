@@ -126,10 +126,16 @@ def txt2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
                     questions1.append((temp_context_noise.replace('\n', '')))
                     questions2.append(primary_question_dict[temp_pid])
                     flags.append(1)
+
+                    # add unnoise data
+                    questions1.append((temp_context.replace('\n', '')))
+                    questions2.append(primary_question_dict[temp_pid])
+                    flags.append(1)
+
                     temp_dict = primary_question_dict.copy()
                     primary_id_raw = list(temp_dict.keys())
 
-                    # negative sample: 1:3
+                    # negative sample: 2:2
                     primary_id_raw.remove(temp_pid)
                     fake_id = random.choice(primary_id_raw)
                     questions1.append(temp_context.replace('\n', ''))
@@ -142,11 +148,11 @@ def txt2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
                     questions2.append(primary_question_dict[fake_id])
                     flags.append(0)
 
-                    primary_id_raw.remove(fake_id)
-                    fake_id = random.choice(primary_id_raw)
-                    questions1.append(temp_context.replace('\n', ''))
-                    questions2.append(primary_question_dict[fake_id])
-                    flags.append(0)
+                    # primary_id_raw.remove(fake_id)
+                    # fake_id = random.choice(primary_id_raw)
+                    # questions1.append(temp_context.replace('\n', ''))
+                    # questions2.append(primary_question_dict[fake_id])
+                    # flags.append(0)
 
             except Exception as e:
                 print(line)
@@ -198,11 +204,17 @@ def csv2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
             questions1.append(temp_context_noise)
             questions2.append(primary_question_dict[data[2]])
             flags.append(1)
+
+            # add unnoise data
+            questions1.append((temp_context.replace('\n', '')))
+            questions2.append(primary_question_dict[data[2]])
+            flags.append(1)
+
             temp_dict = primary_question_dict.copy()  # 浅拷贝，避免修改主问题列表
             # dict.keys() 返回dict_keys类型，其性质类似集合(set)而不是列表(list)，因此不能使用索引获取其元素
             primary_id_raw = list(temp_dict.keys())
 
-            # negative sample ratio: 1/3
+            # negative sample ratio: 2:2
             primary_id_raw.remove(data[2])  # 先去除该问题主问题id，再随机负采样
             fake_id = random.choice(primary_id_raw)
 
@@ -216,11 +228,11 @@ def csv2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
             questions2.append(primary_question_dict[fake_id])
             flags.append(0)
 
-            primary_id_raw.remove(fake_id)
-            fake_id = random.choice(primary_id_raw)
-            questions1.append(temp_context)
-            questions2.append(primary_question_dict[fake_id])
-            flags.append(0)
+            # primary_id_raw.remove(fake_id)
+            # fake_id = random.choice(primary_id_raw)
+            # questions1.append(temp_context)
+            # questions2.append(primary_question_dict[fake_id])
+            # flags.append(0)
 
     with codecs.open(out_path, 'w', encoding='utf-8') as qq:
         for flag, q1, q2 in zip(flags, questions1, questions2):
