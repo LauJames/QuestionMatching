@@ -15,12 +15,11 @@ import tensorflow as tf
 import tensorflow.contrib as tc
 
 
-def rnn(rnn_type, inputs, hidden_dim, num_layers=1, dropout_keep_prob=None, concat=True):
+def rnn(rnn_type, inputs, hidden_dim, num_layers=1, seq_len=None, dropout_keep_prob=None, concat=True):
     """
     Implements (Bi-)LSTM, (Bi-)GRU and (Bi-)RNN
     :param rnn_type: the type of rnn
     :param inputs:  padded inputs
-    :param length:  the valid length of the inputs
     :param hidden_dim:  the size of hidden units
     :param num_layers:  multiple rnn layer are stacked if layer_num > 1
     :param dropout_keep_prob:  the ratio of dropout
@@ -31,7 +30,7 @@ def rnn(rnn_type, inputs, hidden_dim, num_layers=1, dropout_keep_prob=None, conc
     """
     if not rnn_type.startswith('bi'):
         cell = get_cell(rnn_type, hidden_dim, num_layers, dropout_keep_prob)
-        outputs, states = tf.nn.dynamic_rnn(cell, inputs, dtype=tf.float32)
+        outputs, states = tf.nn.dynamic_rnn(cell, inputs, sequence_length=seq_len, dtype=tf.float32)
         if rnn_type.endswith('lstm'):
             c = [state.c for state in states]
             h = [state.h for state in states]
@@ -40,7 +39,7 @@ def rnn(rnn_type, inputs, hidden_dim, num_layers=1, dropout_keep_prob=None, conc
         cell_fw = get_cell(rnn_type, hidden_dim, num_layers, dropout_keep_prob)
         cell_bw = get_cell(rnn_type, hidden_dim, num_layers, dropout_keep_prob)
         outputs, states = tf.nn.bidirectional_dynamic_rnn(
-            cell_bw, cell_fw, inputs, dtype=tf.float32
+            cell_bw, cell_fw, inputs, sequence_length=seq_len, dtype=tf.float32
         )
         states_fw, states_bw = states
         if rnn_type.endswith('lstm'):
