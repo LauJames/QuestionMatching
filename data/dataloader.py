@@ -84,7 +84,7 @@ def batch_iter_per_epoch_mask(q1, q2, q1_mask, q2_mask, labels, batch_size=64, s
     for i in range(num_batch):
         start_id = i * batch_size
         end_id = min((i + 1) * batch_size, data_len)
-        yield q1_shuffle[start_id, end_id], q2_shuffle[start_id: end_id], q1_mask_shuffle[start_id: end_id], q2_mask_shuffle[start_id, end_id], labels_shuffle[start_id: end_id]
+        yield q1_shuffle[start_id: end_id], q2_shuffle[start_id: end_id], q1_mask_shuffle[start_id: end_id], q2_mask_shuffle[start_id: end_id], labels_shuffle[start_id: end_id]
 
 
 def split_data(data_file, vocab_path, pkl_path, dev_sample_percentage=0.1, test_sample_percentage=0.1, mask=False):
@@ -138,7 +138,9 @@ def split_data(data_file, vocab_path, pkl_path, dev_sample_percentage=0.1, test_
         q2_mask_dev = q2_mask_shuffle[dev_sample_indices + test_sample_indices: test_sample_indices]
         q2_mask_test = q2_mask_shuffle[test_sample_indices:]
 
-    del q1, q2, y, q1_pad, q2_pad, q1_shuffled, q2_shuffled, y_shuffled, q1_mask, q2_mask, q1_shuffled, q2_shuffled
+        del q1_mask, q2_mask, q1_mask_shuffle, q2_mask_shuffle
+
+    del q1, q2, y, q1_pad, q2_pad, q1_shuffled, q2_shuffled, y_shuffled
 
     vocab_size = len(vocab_processor.vocabulary_)
 

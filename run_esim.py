@@ -171,6 +171,11 @@ def prepare():
     time_dif = get_time_dif(start_time)
     print('Vocab processing time usage:', time_dif)
 
+    # Vocab size: 25579
+    # Vocabulary Size: 25579
+    # Train / Dev / test split: 589870 / 73733 / 73733
+    # Vocab processing time usage: 0:04: 21
+
 
 def train():
     # Loading data
@@ -367,6 +372,6 @@ if __name__ == '__main__':
     #     train()
     # if args.evaluate:
     #     predict()
-    prepare()
-    # train()
+    # prepare()
+    train()
     # predict()

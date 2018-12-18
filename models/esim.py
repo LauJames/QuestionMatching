@@ -82,7 +82,7 @@ class ESIM(object):
             self.q2_mul = tf.multiply(self.sep_q2_encodes, self.q2_hat)
 
             self.m_q1 = tf.concat([self.sep_q1_encodes, self.q1_hat, self.q1_diff, self.q1_mul], axis=2)
-            self.m_q2 = tf.concat([self.sep_q2_encodes, self.q2_hat, self.q2_diff, self.q2_mul])
+            self.m_q2 = tf.concat([self.sep_q2_encodes, self.q2_hat, self.q2_diff, self.q2_mul], axis=2)
 
         # composition block
         with tf.variable_scope('inference_composition'):
@@ -115,7 +115,7 @@ class ESIM(object):
                                               kernel_initializer=tf.random_normal_initializer(0.0, 0.1))
 
         with tf.variable_scope('loss'):
-            self.losses = tf.nn.sigmoid_cross_entropy_with_logits(labels=self.input_y, logits=self.logits)
+            self.losses = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.input_y, logits=self.logits + 1e-10)
             self.loss = tf.reduce_mean(self.losses, name='loss')
             self.weights = [v for v in tf.trainable_variables() if ('w' in v.name) or ('kernel' in v.name)]
             self.l2_loss = tf.add_n([tf.nn.l2_loss(w) for w in self.weights]) * l2_lambda
@@ -138,7 +138,7 @@ class ESIM(object):
                 ValueError('Unknown optimizer: {0}'.format(optimizer))
 
         with tf.variable_scope('acc'):
-            self.probs = tf.nn.sigmoid(self.logits, name='probability')
+            self.probs = tf.nn.softmax(self.logits, name='probability')
             self.predict = tf.argmax(self.probs, axis=1, name='predict_label')
             self.correct_predict = tf.equal(tf.cast(self.predict, tf.int64), self.input_y)
             self.accuracy = tf.reduce_mean(tf.cast(self.correct_predict, tf.float32), name='Accuracy')
