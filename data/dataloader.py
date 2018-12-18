@@ -62,7 +62,32 @@ def batch_iter_per_epoch(q1, q2, labels, batch_size=64, shuffle=True):
         yield q1_shuffle[start_id:end_id], q2_shuffle[start_id:end_id], labels_shuffle[start_id:end_id]
 
 
-def split_data(data_file, vocab_path, pkl_path, dev_sample_percentage=0.1, test_sample_percentage=0.1):
+def batch_iter_per_epoch_mask(q1, q2, q1_mask, q2_mask, labels, batch_size=64, shuffle=True):
+    """为每个epoch随机生成批次数据（针对有mask）"""
+    data_len = len(q1)
+    num_batch = int((data_len - 1)/batch_size) + 1
+
+    if shuffle:
+        indices = np.random.permutation(np.arange(data_len))
+        q1_shuffle = q1[indices]
+        q2_shuffle = q2[indices]
+        q1_mask_shuffle = q1_mask[indices]
+        q2_mask_shuffle = q2_mask[indices]
+        labels_shuffle = labels[indices]
+    else:
+        q1_shuffle = q1
+        q2_shuffle = q2
+        q1_mask_shuffle = q1_mask
+        q2_mask_shuffle = q2_mask
+        labels_shuffle = labels
+
+    for i in range(num_batch):
+        start_id = i * batch_size
+        end_id = min((i + 1) * batch_size, data_len)
+        yield q1_shuffle[start_id, end_id], q2_shuffle[start_id: end_id], q1_mask_shuffle[start_id: end_id], q2_mask_shuffle[start_id, end_id], labels_shuffle[start_id: end_id]
+
+
+def split_data(data_file, vocab_path, pkl_path, dev_sample_percentage=0.1, test_sample_percentage=0.1, mask=False):
     q1, q2, y = get_q2q_label(data_file)
 
     # Build vocabulary
@@ -97,7 +122,23 @@ def split_data(data_file, vocab_path, pkl_path, dev_sample_percentage=0.1, test_
     y_dev = y_shuffled[dev_sample_indices + test_sample_indices: test_sample_indices]
     y_test = y_shuffled[test_sample_indices:]
 
-    del q1, q2, y, q1_pad, q2_pad, q1_shuffled, q2_shuffled, y_shuffled
+    # mask length
+    if mask:
+        q1_mask = np.array([len(un_pad_question) for un_pad_question in q1])
+        q2_mask = np.array([len(un_pad_question) for un_pad_question in q2])
+
+        q1_mask_shuffle = q1_mask[shuffle_indices]
+        q2_mask_shuffle = q2_mask[shuffle_indices]
+
+        q1_mask_train = q1_mask_shuffle[: dev_sample_indices + test_sample_indices]
+        q1_mask_dev = q1_mask_shuffle[dev_sample_indices + test_sample_indices: test_sample_indices]
+        q1_mask_test = q1_mask_shuffle[test_sample_indices:]
+
+        q2_mask_train = q2_mask_shuffle[: dev_sample_indices + test_sample_indices]
+        q2_mask_dev = q2_mask_shuffle[dev_sample_indices + test_sample_indices: test_sample_indices]
+        q2_mask_test = q2_mask_shuffle[test_sample_indices:]
+
+    del q1, q2, y, q1_pad, q2_pad, q1_shuffled, q2_shuffled, y_shuffled, q1_mask, q2_mask, q1_shuffled, q2_shuffled
 
     vocab_size = len(vocab_processor.vocabulary_)
 
@@ -116,11 +157,18 @@ def split_data(data_file, vocab_path, pkl_path, dev_sample_percentage=0.1, test_
             pkl.dump(q2_test, pkl_file)
             pkl.dump(y_test, pkl_file)
             pkl.dump(vocab_size, pkl_file)
+            if mask:
+                pkl.dump(q1_mask_train, pkl_file)
+                pkl.dump(q2_mask_train, pkl_file)
+                pkl.dump(q1_mask_dev, pkl_file)
+                pkl.dump(q2_mask_dev, pkl_file)
+                pkl.dump(q1_mask_test, pkl_file)
+                pkl.dump(q2_mask_test,pkl_file)
         except Exception as e:
             print(e)
 
 
-def load_pkl_set(pkl_path):
+def load_pkl_set(pkl_path, mask=False):
     with open(pkl_path, 'rb') as pkl_file:
         q1_train = pkl.load(pkl_file)
         q2_train = pkl.load(pkl_file)
@@ -132,8 +180,17 @@ def load_pkl_set(pkl_path):
         q2_test = pkl.load(pkl_file)
         y_test = pkl.load(pkl_file)
         vocab_size = pkl.load(pkl_file)
-
-    return q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size
+        if mask:
+            q1_mask_train = pkl.load(pkl_file)
+            q2_mask_train = pkl.load(pkl_file)
+            q1_mask_dev = pkl.load(pkl_file)
+            q2_mask_dev = pkl.load(pkl_file)
+            q1_mask_test = pkl.load(pkl_file)
+            q2_mask_test = pkl.load(pkl_file)
+            return [q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test,
+                    vocab_size, q1_mask_train, q2_mask_train, q1_mask_dev, q2_mask_dev, q1_mask_test, q2_mask_test]
+        else:
+            return [q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size]
 
 
 if __name__ == '__main__':

@@ -22,7 +22,7 @@ class ESIM(object):
     ESIM model implemented by tensorflow, using for Question-Question matching task
     """
     def __init__(self, sequence_length, num_classes, embedding_dim, vocab_size,
-                 max_length, hidden_dim, learning_rate, attention_size, l2_lambda=0.0001, optimizer='adam'):
+                 max_length, hidden_dim, learning_rate, l2_lambda=0.0001, optimizer='adam'):
 
         # placeholders for input, label and dropout_prob
         self.input_q1 = tf.placeholder(tf.int64, [None, sequence_length], name='input_q1')

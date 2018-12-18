@@ -142,7 +142,7 @@ def infer_prob(q1, q2, vocab_processor, model, session):
     square_probs = predict_prob ** 2
     row_sum = np.sum(square_probs, axis=1)
     row_sum_duplicate = np.tile(np.reshape(row_sum, [-1, 1]), 2)
-    aug_probs = square_probs / row_sum_duplicate
+    aug_probs = square_probs / row_sum_duplicate  # a**2/(a**2 + b**2)    b**2/(a**2 + b**2)
     return aug_probs, prediction
 
 
