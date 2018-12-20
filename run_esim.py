@@ -25,7 +25,7 @@ import logging
 import jieba
 from sklearn import metrics
 from models.esim import ESIM
-from data.dataloader import split_data, batch_iter_per_epoch_mask, get_q2q_label, load_pkl_set
+from data.dataloader import split_data, batch_iter_per_epoch, batch_iter_per_epoch_mask, get_q2q_label, load_pkl_set
 
 
 def parse_args():
@@ -44,7 +44,7 @@ def parse_args():
     train_settings.add_argument('--dev_sample_percentage', type=float, default=0.1,
                                 help='percentage of the training data to use for validation')
     train_settings.add_argument('--optim', default='adam', help='optimizer type')
-    train_settings.add_argument('--learning_rate', type=float, default=0.001, help='optimizer type')
+    train_settings.add_argument('--learning_rate', type=float, default=0.1, help='optimizer type')
     train_settings.add_argument('--weight_dacay', type=float, default=0, help='weight decay')
     train_settings.add_argument('--dropout_keep_prob', type=float, default=0.5, help='dropout keep prob')
     train_settings.add_argument('--batch_size', type=int, default=64, help='train batch size')
@@ -101,19 +101,53 @@ def get_time_dif(start_time):
     return datetime.timedelta(seconds=int(round(time_dif)))
 
 
-def feed_data(q1_batch, q2_batch, y_batch, q1_mask_batch, q2_mask_batch, keep_prob, model):
+# def feed_data(q1_batch, q2_batch, y_batch, q1_mask_batch, q2_mask_batch, keep_prob, model):
+#     feed_dict = {
+#         model.input_q1: q1_batch,
+#         model.input_q2: q2_batch,
+#         model.input_y: y_batch,
+#         model.q1_mask: q1_mask_batch,
+#         model.q2_mask: q2_mask_batch,
+#         model.dropout_keep_prob: keep_prob
+#     }
+#     return feed_dict
+
+def feed_data(q1_batch, q2_batch, y_batch, keep_prob, model):
     feed_dict = {
         model.input_q1: q1_batch,
         model.input_q2: q2_batch,
         model.input_y: y_batch,
-        model.q1_mask: q1_mask_batch,
-        model.q2_mask: q2_mask_batch,
         model.dropout_keep_prob: keep_prob
     }
     return feed_dict
 
 
-def evaluate(q1_dev, q2_dev, y_dev, q1_mask_dev, q2_mask_dev, sess, model):
+# def evaluate(q1_dev, q2_dev, y_dev, q1_mask_dev, q2_mask_dev, sess, model):
+#     """
+#     Evaluate model on a dev set
+#     :param q1_dev:
+#     :param q2_dev:
+#     :param y_dev:
+#     :param sess:
+#     :return:
+#     """
+#     data_len = len(y_dev)
+#     batch_eval = batch_iter_per_epoch_mask(q1_dev, q2_dev, q1_mask_dev, q2_mask_dev, y_dev)
+#     total_loss = 0.0
+#     total_acc = 0.0
+#     for q1_batch_eval, q2_batch_eval, q1_mask_batch_eval, q2_mask_batch_eval, y_batch_eval in batch_eval:
+#         batch_len = len(y_batch_eval)
+#         feed_dict = feed_data(q1_batch_eval, q2_batch_eval, y_batch_eval,
+#                               q1_mask_batch_eval, q2_mask_batch_eval,
+#                               keep_prob=1.0,
+#                               model=model)
+#         loss, accuracy = sess.run([model.loss, model.accuracy], feed_dict)
+#         total_loss += loss * batch_len
+#         total_acc += accuracy * batch_len
+#     return total_loss/data_len, total_acc/data_len
+
+
+def evaluate(q1_dev, q2_dev, y_dev, sess, model):
     """
     Evaluate model on a dev set
     :param q1_dev:
@@ -123,15 +157,12 @@ def evaluate(q1_dev, q2_dev, y_dev, q1_mask_dev, q2_mask_dev, sess, model):
     :return:
     """
     data_len = len(y_dev)
-    batch_eval = batch_iter_per_epoch_mask(q1_dev, q2_dev, q1_mask_dev, q2_mask_dev, y_dev)
+    batch_eval = batch_iter_per_epoch(q1_dev, q2_dev, y_dev)
     total_loss = 0.0
     total_acc = 0.0
-    for q1_batch_eval, q2_batch_eval, q1_mask_batch_eval, q2_mask_batch_eval, y_batch_eval in batch_eval:
+    for q1_batch_eval, q2_batch_eval, y_batch_eval in batch_eval:
         batch_len = len(y_batch_eval)
-        feed_dict = feed_data(q1_batch_eval, q2_batch_eval, y_batch_eval,
-                              q1_mask_batch_eval, q2_mask_batch_eval,
-                              keep_prob=1.0,
-                              model=model)
+        feed_dict = feed_data(q1_batch_eval, q2_batch_eval, y_batch_eval, keep_prob=1.0, model=model)
         loss, accuracy = sess.run([model.loss, model.accuracy], feed_dict)
         total_loss += loss * batch_len
         total_acc += accuracy * batch_len
@@ -166,7 +197,9 @@ def prepare():
     vocab_processor.save(os.path.join(args.save_dir, "vocab"))
 
     # split
-    split_data(args.merged_files, os.path.join(args.save_dir, "vocab"), args.pkl_files, mask=True)
+    # split_data(args.merged_files, os.path.join(args.save_dir, "vocab"), args.pkl_files, mask=True)
+    # no mask
+    split_data(args.merged_files, os.path.join(args.save_dir, "vocab"), args.pkl_files)
 
     time_dif = get_time_dif(start_time)
     print('Vocab processing time usage:', time_dif)
@@ -181,10 +214,15 @@ def train():
     # Loading data
     print('Loading data ...')
     start_time = time.time()
-    [q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size, q1_mask_train,
-     q2_mask_train, q1_mask_dev, q2_mask_dev, q1_mask_test, q2_mask_test] = load_pkl_set(args.pkl_files, mask=True)
+    # [q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size, q1_mask_train,
+    #  q2_mask_train, q1_mask_dev, q2_mask_dev, q1_mask_test, q2_mask_test] = load_pkl_set(args.pkl_files, mask=True)
 
-    del q1_test, q2_test, q1_mask_test, q2_mask_test, y_test
+    # del q1_test, q2_test, q1_mask_test, q2_mask_test, y_test
+
+    q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size = load_pkl_set(
+        args.pkl_files)
+
+    del q1_test, q2_test, y_test
 
     time_dif = get_time_dif(start_time)
     print('Time usage:', time_dif)
@@ -230,12 +268,13 @@ def train():
     tag = False
     for epoch in range(args.epochs):
         print('Epoch:', epoch + 1)
-        batch_train = batch_iter_per_epoch_mask(q1_train, q2_train,
-                                                q1_mask_train, q2_mask_train,
-                                                y_train, args.batch_size)
-        for q1_batch, q2_batch, q1_mask_batch, q2_mask_batch, y_batch in batch_train:
-            feed_dict = feed_data(q1_batch, q2_batch, y_batch, q1_mask_batch, q2_mask_batch,
-                                  args.dropout_keep_prob, model)
+        # batch_train = batch_iter_per_epoch_mask(q1_train, q2_train,
+        #                                         q1_mask_train, q2_mask_train,
+        #                                         y_train, args.batch_size)
+
+        batch_train = batch_iter_per_epoch(q1_train, q2_train, y_train, args.batch_size)
+        for q1_batch, q2_batch, y_batch in batch_train:
+            feed_dict = feed_data(q1_batch, q2_batch, y_batch, args.dropout_keep_prob, model=model)
             if total_batch % args.checkpoint_every == 0:
                 # write to tensorboard scalar
                 summary = session.run(merged_summary, feed_dict)
@@ -245,7 +284,8 @@ def train():
                 # print performance on train set and dev set
                 feed_dict[model.dropout_keep_prob] = 1.0
                 loss_train, acc_train = session.run([model.loss, model.accuracy], feed_dict=feed_dict)
-                loss_dev, acc_dev = evaluate(q1_dev, q2_dev, y_dev, q1_mask_dev, q2_mask_dev, session, model)
+                # loss_dev, acc_dev = evaluate(q1_dev, q2_dev, y_dev, q1_mask_dev, q2_mask_dev, session, model)
+                loss_dev, acc_dev = evaluate(q1_dev, q2_dev, y_dev, session, model=model)
 
                 if acc_dev > best_acc_dev:
                     # save best result
@@ -276,10 +316,15 @@ def train():
 def predict():
     print('Loading test data ...')
     start_time = time.time()
-    [q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size, q1_mask_train,
-     q2_mask_train, q1_mask_dev, q2_mask_dev, q1_mask_test, q2_mask_test] = load_pkl_set(args.pkl_files, mask=True)
+    # [q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size, q1_mask_train,
+    #  q2_mask_train, q1_mask_dev, q2_mask_dev, q1_mask_test, q2_mask_test] = load_pkl_set(args.pkl_files, mask=True)
+    #
+    # del q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_mask_train, q2_mask_train, q1_mask_dev, q2_mask_dev
 
-    del q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_mask_train, q2_mask_train, q1_mask_dev, q2_mask_dev
+    q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev, q1_test, q2_test, y_test, vocab_size = load_pkl_set(
+        args.pkl_files)
+
+    del q1_train, q2_train, y_train, q1_dev, q2_dev, y_dev
 
     # ESIM model init
     model = ESIM(
@@ -299,20 +344,29 @@ def predict():
     saver.restore(session, save_path=save_path)
 
     print('Testing ...')
-    loss_test, acc_test = evaluate(q1_test, q2_test, y_test, q1_mask_test, q2_mask_test, session, model)
+    # loss_test, acc_test = evaluate(q1_test, q2_test, y_test, q1_mask_test, q2_mask_test, session, model)
+    loss_test, acc_test = evaluate(q1_test, q2_test, y_test, session, model=model)
     print('Test loss:{0:6.2}, Test acc:{1:7.2%}'.format(loss_test, acc_test))
 
-    test_batches = batch_iter_per_epoch_mask(q1_test, q2_test, q1_mask_test, q2_mask_test, y_test, shuffle=False)
+    # test_batches = batch_iter_per_epoch_mask(q1_test, q2_test, q1_mask_test, q2_mask_test, y_test, shuffle=False)
+    test_batches = batch_iter_per_epoch(q1_test, q2_test, y_test, shuffle=False)
     all_predictions = []
     all_predict_prob = []
     count = 0
-    for q1_test_batch, q2_test_batch, q1_mask_batch, q2_mask_batch, y_test_batch in test_batches:
-        batch_predictions, batch_predict_probs = session.run([model.predict, model.probs],
+    # for q1_test_batch, q2_test_batch, q1_mask_batch, q2_mask_batch, y_test_batch in test_batches:
+    #     batch_predictions, batch_predict_probs = session.run([model.predict, model.probs],
+    #                                                          feed_dict={
+    #                                                              model.input_q1: q1_test_batch,
+    #                                                              model.input_q2: q2_test_batch,
+    #                                                              model.q1_mask: q1_mask_batch,
+    #                                                              model.q2_mask: q2_mask_batch,
+    #                                                              model.dropout_keep_prob: 1.0
+    #                                                          })
+    for q1_test_batch, q2_test_batch, y_test_batch in test_batches:
+        batch_predictions, batch_predict_probs = session.run([model.y_pred, model.probs],
                                                              feed_dict={
                                                                  model.input_q1: q1_test_batch,
                                                                  model.input_q2: q2_test_batch,
-                                                                 model.q1_mask: q1_mask_batch,
-                                                                 model.q2_mask: q2_mask_batch,
                                                                  model.dropout_keep_prob: 1.0
                                                              })
         all_predictions = np.concatenate([all_predictions, batch_predictions])

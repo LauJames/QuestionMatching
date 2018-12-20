@@ -38,3 +38,5 @@
 /data/split_data_aug.pkl
 /接口说明.docx
 /tensorboard_dir/MVLSTM_tune/
+/checkpoints/ESIM/
+/tensorboard_dir/ESIM/

@@ -22,6 +22,7 @@ def rnn(rnn_type, inputs, hidden_dim, num_layers=1, seq_len=None, dropout_keep_p
     :param inputs:  padded inputs
     :param hidden_dim:  the size of hidden units
     :param num_layers:  multiple rnn layer are stacked if layer_num > 1
+    :param seq_len: using for mask
     :param dropout_keep_prob:  the ratio of dropout
     :param concat:  When the rnn is bidirectional, the forward outputs and backward outputs
         are concated if this is True, else adding them
