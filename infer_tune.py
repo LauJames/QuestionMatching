@@ -25,6 +25,7 @@ import logging
 import jieba
 import pickle
 from models.MVLSTM import MVLSTM
+from logger_config import base_logger
 
 curdir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(curdir))
@@ -88,8 +89,9 @@ def prepare():
     start_time = time.time()
     # absolute path
     save_path = os.path.join(curdir, os.path.join(args.save_dir, 'best_validation'))
-
+    base_logger.info("加载模型地址：" + str(save_path))
     vocab_path = os.path.join(curdir, os.path.join(args.save_dir, 'vocab'))
+    base_logger.info("加载词典地址：" + str(vocab_path))
     vocab_processor = tc.learn.preprocessing.VocabularyProcessor.restore(vocab_path)
     model = MVLSTM(
         sequence_length=args.max_q_len,
@@ -101,13 +103,25 @@ def prepare():
         learning_rate=args.learning_rate
     )
 
-    session = tf.Session()
+    # Create Session
+    gpu_options = tf.GPUOptions(
+        per_process_gpu_memory_fraction=0.5,
+        allow_growth=True
+    )
+    session_config = tf.ConfigProto(
+        allow_soft_placement=args.allow_soft_placement,
+        log_device_placement=args.log_device_placement,
+        gpu_options=gpu_options
+    )
+
+    session = tf.Session(config=session_config)
     session.run(tf.global_variables_initializer())
     saver = tf.train.Saver()
     saver.restore(session, save_path=save_path)
 
     time_dif = get_time_dif(start_time)
-    print('Time usage:', time_dif)
+    # print('Time usage:', time_dif)
+    base_logger.info("加载用时：" + str(time_dif))
 
     return vocab_processor, model, session
 
@@ -130,6 +144,9 @@ def inference(q1, q2, vocab_processor, model, session):
 
 
 def infer_prob(q1, q2, vocab_processor, model, session):
+    base_logger.info("Question1:" + str(q1))
+    base_logger.info("Question2:" + str(q2))
+
     q1_pad = np.array(list(vocab_processor.transform(q1)))
     q2_pad = np.array(list(vocab_processor.transform(q2)))
 
@@ -143,14 +160,18 @@ def infer_prob(q1, q2, vocab_processor, model, session):
     row_sum = np.sum(square_probs, axis=1)
     row_sum_duplicate = np.tile(np.reshape(row_sum, [-1, 1]), 2)
     aug_probs = square_probs / row_sum_duplicate  # a**2/(a**2 + b**2)    b**2/(a**2 + b**2)
+
+    base_logger.info("Prediction:" + str(prediction))
+    base_logger.info("Probabilities:" + str(aug_probs))
+
     return aug_probs, prediction
 
 
 if __name__ == '__main__':
     q1 = ['如何买保险', '如何买保险', '如何买保险']
     q2 = ['如何买保险', '你好，这个保险怎么买', '保险怎么买呢？']
-    vocab_processor, model, session = prepare()
-    probs, predict = infer_prob(q1, q2, vocab_processor, model, session)
+    vocab_processor, model, sess = prepare()
+    probs, predict = infer_prob(q1, q2, vocab_processor, model, sess)
     print(probs)
     print(predict)
     # q1 = ['如何买保险']

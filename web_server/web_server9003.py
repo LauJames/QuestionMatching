@@ -53,7 +53,7 @@ class MatchHandler(tornado.web.RequestHandler):
         pass
 
     def get(self, *args, **kwargs):
-        self.render('index.html')
+        self.render('find_answer.html')
 
     def post(self, *args, **kwargs):
         self.use_write()

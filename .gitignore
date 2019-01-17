@@ -40,3 +40,4 @@
 /tensorboard_dir/MVLSTM_tune/
 /checkpoints/ESIM/
 /tensorboard_dir/ESIM/
+/web_server/logs/
