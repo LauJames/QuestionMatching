@@ -116,16 +116,17 @@ def txt2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
                 temp_context = temp_data[1]
                 if len(flags) < 150000:
                     temp_context_noise = random.choice(front_list) + temp_context + random.choice(end_list)
-                else:
-                    temp_context_noise = temp_context
+
+                    questions1.append((temp_context_noise.replace('\n', '')))
+                    questions2.append(primary_question_dict[temp_pid])
+                    flags.append(1)
+                # else:
+                #     temp_context_noise = temp_context
                 temp_pid = int(temp_data[2])
                 if not temp_context.strip():
                     continue
                 if temp_pid != 0:
                     # questions1.append((temp_context.replace('\n', '')))
-                    questions1.append((temp_context_noise.replace('\n', '')))
-                    questions2.append(primary_question_dict[temp_pid])
-                    flags.append(1)
 
                     # add unnoise data
                     questions1.append((temp_context.replace('\n', '')))
@@ -148,11 +149,14 @@ def txt2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
                     questions2.append(primary_question_dict[fake_id])
                     flags.append(0)
 
-                    # primary_id_raw.remove(fake_id)
-                    # fake_id = random.choice(primary_id_raw)
-                    # questions1.append(temp_context.replace('\n', ''))
-                    # questions2.append(primary_question_dict[fake_id])
-                    # flags.append(0)
+                    primary_id_raw.remove(fake_id)
+                    fake_id = random.choice(primary_id_raw)
+                    questions1.append(temp_context.replace('\n', ''))
+                    questions2.append(primary_question_dict[fake_id])
+                    flags.append(0)
+
+                questions1.append(temp_context.replace('\n', ''))
+                questions2.append(temp_context.replace('\n', ''))
 
             except Exception as e:
                 print(line)
@@ -194,19 +198,21 @@ def csv2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
     for key, data in csv_data.iterrows():
         if not (data[1].strip() or data[2].strip()):
             continue
+        temp_context = (data[1]).replace("\n", "")
         if data[2] != 0:
-            temp_context = (data[1]).replace("\n", "")
             if len(flags) < 100000:
                 temp_context_noise = random.choice(front_list) + temp_context + random.choice(end_list)
-            else:
-                temp_context_noise = temp_context
-            # True
-            questions1.append(temp_context_noise)
-            questions2.append(primary_question_dict[data[2]])
-            flags.append(1)
+
+                # True
+                questions1.append(temp_context_noise)
+                questions2.append(primary_question_dict[data[2]])
+                flags.append(1)
+
+            # else:
+            #     temp_context_noise = temp_context
 
             # add unnoise data
-            questions1.append((temp_context.replace('\n', '')))
+            questions1.append(temp_context.replace('\n', ''))
             questions2.append(primary_question_dict[data[2]])
             flags.append(1)
 
@@ -228,16 +234,21 @@ def csv2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
             questions2.append(primary_question_dict[fake_id])
             flags.append(0)
 
-            # primary_id_raw.remove(fake_id)
-            # fake_id = random.choice(primary_id_raw)
-            # questions1.append(temp_context)
-            # questions2.append(primary_question_dict[fake_id])
-            # flags.append(0)
+            primary_id_raw.remove(fake_id)
+            fake_id = random.choice(primary_id_raw)
+            questions1.append(temp_context)
+            questions2.append(primary_question_dict[fake_id])
+            flags.append(0)
+
+        questions1.append(temp_context.replace('\n', ''))
+        questions2.append(temp_context.replace('\n', ''))
+        flags.append(1)
 
     with codecs.open(out_path, 'w', encoding='utf-8') as qq:
         for flag, q1, q2 in zip(flags, questions1, questions2):
             if q1 and q2:
                 qq.write(str(flag) + '\t' + str(q1) + '\t' + str(q2) + '\n')
+
 
 def excel2csv(path, out_path):
     """
@@ -425,6 +436,6 @@ def gen_testset(path):
 if __name__ == '__main__':
     # csv2QQpair(question_tk, qq_path_tk)
     # txt2QQpair(question_bd, qq_path_bd)
-    # csv2QQpair_tune(question_tk, qq_path_tk)
-    txt2QQpair_tune(question_bd, qq_path_bd)
+    csv2QQpair_tune(question_tk, qq_path_tk)
+    # txt2QQpair_tune(question_bd, qq_path_bd)
 

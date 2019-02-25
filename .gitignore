@@ -41,3 +41,6 @@
 /checkpoints/ESIM/
 /tensorboard_dir/ESIM/
 /web_server/logs/
+/ir/config4tk.py
+/ir/index4tk.py
+/ir/search4tk.py
