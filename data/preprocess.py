@@ -114,22 +114,23 @@ def txt2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
                     continue
                 temp_id = int(temp_data[0])
                 temp_context = temp_data[1]
-                if len(flags) < 150000:
-                    temp_context_noise = random.choice(front_list) + temp_context + random.choice(end_list)
-
-                    questions1.append((temp_context_noise.replace('\n', '')))
-                    questions2.append(primary_question_dict[temp_pid])
-                    flags.append(1)
-                # else:
-                #     temp_context_noise = temp_context
                 temp_pid = int(temp_data[2])
+
                 if not temp_context.strip():
                     continue
                 if temp_pid != 0:
+                    if len(flags) < 150000:
+                        temp_context_noise = random.choice(front_list) + temp_context + random.choice(end_list)
+
+                        questions1.append(temp_context_noise.replace('\n', ''))
+                        questions2.append(primary_question_dict[temp_pid])
+                        flags.append(1)
+                    # else:
+                    #     temp_context_noise = temp_context
                     # questions1.append((temp_context.replace('\n', '')))
 
                     # add unnoise data
-                    questions1.append((temp_context.replace('\n', '')))
+                    questions1.append(temp_context.replace('\n', ''))
                     questions2.append(primary_question_dict[temp_pid])
                     flags.append(1)
 
@@ -157,6 +158,7 @@ def txt2QQpair_tune(path, out_path, front_path='./front_noise.txt', end_path='./
 
                 questions1.append(temp_context.replace('\n', ''))
                 questions2.append(temp_context.replace('\n', ''))
+                flags.append(1)
 
             except Exception as e:
                 print(line)
@@ -436,6 +438,6 @@ def gen_testset(path):
 if __name__ == '__main__':
     # csv2QQpair(question_tk, qq_path_tk)
     # txt2QQpair(question_bd, qq_path_bd)
-    csv2QQpair_tune(question_tk, qq_path_tk)
-    # txt2QQpair_tune(question_bd, qq_path_bd)
+    # csv2QQpair_tune(question_tk, qq_path_tk)
+    txt2QQpair_tune(question_bd, qq_path_bd)
 

@@ -367,5 +367,5 @@ if __name__ == '__main__':
     # if args.evaluate:
     #     predict()
     # prepare()
-    train()
-    # predict()
+    # train()
+    predict()

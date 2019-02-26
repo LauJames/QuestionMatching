@@ -169,7 +169,7 @@ def infer_prob(q1, q2, vocab_processor, model, session):
 
 if __name__ == '__main__':
     q1 = ['如何买保险', '如何买保险', '如何买保险']
-    q2 = ['如何买保险', '你好，这个保险怎么买', '保险怎么买呢？']
+    q2 = ['如何买保险', '你好，这个保险怎么买', '你好你好？']
     vocab_processor, model, sess = prepare()
     probs, predict = infer_prob(q1, q2, vocab_processor, model, sess)
     print(probs)
